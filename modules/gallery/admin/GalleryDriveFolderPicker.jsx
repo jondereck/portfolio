@@ -50,6 +50,8 @@ export default function GalleryDriveFolderPicker({
   const [loadingAllPreviews, setLoadingAllPreviews] = useState(false);
   const previewScrollRef = useRef(null);
   const loadMoreSentinelRef = useRef(null);
+  const bodyScrollRef = useRef(null);
+  const mediaSectionRef = useRef(null);
 
   const selectFolder = async (folder) => {
     try {
@@ -228,6 +230,31 @@ export default function GalleryDriveFolderPicker({
   const filteredFolders = browseState.folders.filter((folder) =>
     folder.name.toLowerCase().includes(query.trim().toLowerCase()),
   );
+
+  useEffect(() => {
+    if (!open || browseState.loading || filteredFolders.length > 0 || query.trim()) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const isStacked = window.matchMedia('(max-width: 1023px)').matches;
+      if (!isStacked) {
+        return;
+      }
+
+      const root = bodyScrollRef.current;
+      const target = mediaSectionRef.current;
+      if (!root || !target) {
+        return;
+      }
+
+      const nextTop = target.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
+      root.scrollTo({ top: Math.max(0, nextTop - 8), behavior: 'smooth' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, browseState.loading, browseState.currentFolder?.id, filteredFolders.length, query]);
+
   const filteredPreviewFiles = browseState.files.filter((file) => {
     if (mediaPreviewFilter === 'images') return file.kind === 'image';
     if (mediaPreviewFilter === 'videos') return file.kind === 'video';
@@ -430,7 +457,10 @@ export default function GalleryDriveFolderPicker({
                   </div>
                 </header>
 
-                <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[390px_1fr] lg:overflow-hidden">
+                <div
+                  ref={bodyScrollRef}
+                  className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[390px_1fr] lg:overflow-hidden"
+                >
                   <aside className="border-b border-slate-200 bg-slate-50/60 p-4 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-5">
                     <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
                       <div className="flex items-center justify-between gap-3">
@@ -549,7 +579,10 @@ export default function GalleryDriveFolderPicker({
                     </div>
                   </aside>
 
-                  <section className="bg-white p-4 pb-28 lg:min-h-0 lg:overflow-y-auto lg:p-6 lg:pb-6">
+                  <section
+                    ref={mediaSectionRef}
+                    className="bg-white p-4 pb-28 lg:min-h-0 lg:overflow-y-auto lg:p-6 lg:pb-6"
+                  >
                     <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
