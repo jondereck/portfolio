@@ -15,6 +15,7 @@ const EQ_BARS = [0, 1, 2, 3, 4];
 export default function GalleryMediaCard({
   photo,
   selected,
+  selectionMode = false,
   statusLabel: _statusLabel,
   blurUnclothyGenerated = true,
   onToggleSelect,
@@ -40,6 +41,15 @@ export default function GalleryMediaCard({
     }
   };
 
+  const handlePrimaryClick = (event) => {
+    if (selectionMode) {
+      event.preventDefault();
+      onToggleSelect?.(event);
+      return;
+    }
+    onOpenPreview?.();
+  };
+
   return (
     <article
       className={`group overflow-hidden rounded-xl border text-left transition select-none ${
@@ -47,6 +57,16 @@ export default function GalleryMediaCard({
           ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-200 dark:border-blue-400 dark:bg-blue-950/30 dark:ring-blue-900/40'
           : 'border-slate-200 bg-slate-50 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-950/20 dark:hover:border-slate-700 dark:hover:bg-slate-900'
       }`}
+      onClick={
+        selectionMode && isAudio
+          ? (event) => {
+              if (event.target instanceof Element && event.target.closest('[data-gallery-media-control],[data-gallery-select-toggle]')) {
+                return;
+              }
+              handlePrimaryClick(event);
+            }
+          : undefined
+      }
     >
       <div className="relative">
         {isAudio ? (
@@ -112,8 +132,8 @@ export default function GalleryMediaCard({
             type="button"
             className="block w-full select-none"
             style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
-            onClick={onOpenPreview}
-            aria-label={`View ${title}`}
+            onClick={handlePrimaryClick}
+            aria-label={selectionMode ? (selected ? `Deselect ${title}` : `Select ${title}`) : `View ${title}`}
           >
             <div className="relative aspect-square bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800">
               {photo?.imageUrl ? (
@@ -144,31 +164,18 @@ export default function GalleryMediaCard({
         )}
 
         {selected ? (
-          <button
-            type="button"
-            data-gallery-select-toggle="true"
-            onClick={onToggleSelect}
-            aria-label="Deselect"
-            className="absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition hover:bg-blue-700"
-          >
+          <span className="pointer-events-none absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
             <Check className="h-4 w-4" />
-          </button>
+          </span>
         ) : (
           <button
             type="button"
             data-gallery-select-toggle="true"
             onClick={onToggleSelect}
-            className="absolute left-2 top-2 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-          >
-            Select
-          </button>
+            aria-label={`Select ${title}`}
+            className="absolute left-2 top-2 hidden h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 opacity-0 shadow-sm transition hover:bg-white hover:text-slate-900 group-hover:opacity-100 sm:inline-flex dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50"
+          />
         )}
-
-
-      </div>
-
-      <div className="p-3">
-        <p className="truncate text-sm font-semibold text-blue-600 dark:text-blue-400">{title}</p>
       </div>
     </article>
   );

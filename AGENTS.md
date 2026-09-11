@@ -21,6 +21,7 @@ Admin surfaces under `/admin` must stay **mobile-first responsive** and **compac
 - **Shell**: compact `AdminShell` / `AdminTopbar`; on mobile the control bar is **fixed at the bottom** for one-hand reach (desktop stays top); mobile menu via avatar sheet; **no mobile back button** unless requested.
 - Prefer shared tokens in `modules/system/admin/settingsShared.js` and components under `components/admin/shared/*` before one-off styles.
 - Avoid oversized `rounded-[28px]` admin cards and inventing new themes (no purple-on-white / cream-serif restyles).
+- **No instructional helper copy.** Do not add “tap to open”, “switch sections”, “swipe to…”, or similar how-to lines. Labels, titles, and status text only. Put longer guidance in an existing `AdminHint` if it is already required — never as visible subtitle chrome.
 
 ### Responsive rules
 
@@ -32,3 +33,4 @@ Admin surfaces under `/admin` must stay **mobile-first responsive** and **compac
 
 - Preserve Gallery’s mobile tabs, sticky actions, and sheets.
 - Align density with admin tokens; do not replace the three-pane desktop CMS model.
+- Keep Gallery compact: no extra helper sentences on workspace section cards, Drive picker rows, or import steps.

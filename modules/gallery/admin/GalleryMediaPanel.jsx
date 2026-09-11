@@ -57,6 +57,12 @@ function normalizePhotoId(value) {
 const GALLERY_MEDIA_FILTERS = ['all', 'images', 'videos', 'audio', 'nsfw'];
 const GALLERY_MEDIA_SORTS = ['custom', 'dateDesc', 'dateAsc'];
 
+function clampGalleryGridColumns(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.max(2, Math.min(8, Math.round(parsed)));
+}
+
 function readGalleryScroll() {
   if (typeof window === 'undefined') return { windowY: 0, mainTop: 0 };
   const main = document.querySelector('[data-gallery-scroll-main]');
@@ -151,6 +157,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
   const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
   const mediaScrollRef = useRef({ windowY: 0, mainTop: 0 });
   const persistPreferencesTimerRef = useRef(null);
+  const pendingPreferencesRef = useRef({});
   const previousTabRef = useRef('media');
   const settingsHydratedRef = useRef(false);
 
@@ -187,20 +194,28 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     applyGalleryScroll(mediaScrollRef.current);
   }, []);
 
-  const persistGalleryMediaPreferences = useCallback((nextFilter, nextSort) => {
+  const persistGalleryMediaPreferences = useCallback((nextFilter, nextSort, nextGridColumns) => {
     if (typeof window === 'undefined') return;
+
+    if (GALLERY_MEDIA_FILTERS.includes(nextFilter)) {
+      pendingPreferencesRef.current.galleryLastMediaFilter = nextFilter;
+    }
+    if (GALLERY_MEDIA_SORTS.includes(nextSort)) {
+      pendingPreferencesRef.current.galleryLastMediaSort = nextSort;
+    }
+    if (nextGridColumns !== undefined && nextGridColumns !== null && Number.isFinite(Number(nextGridColumns))) {
+      pendingPreferencesRef.current.galleryLastMediaGridColumns = clampGalleryGridColumns(nextGridColumns);
+    }
+
+    if (Object.keys(pendingPreferencesRef.current).length === 0) return;
+
     if (persistPreferencesTimerRef.current) {
       window.clearTimeout(persistPreferencesTimerRef.current);
     }
 
     persistPreferencesTimerRef.current = window.setTimeout(() => {
-      const payload = {};
-      if (GALLERY_MEDIA_FILTERS.includes(nextFilter)) {
-        payload.galleryLastMediaFilter = nextFilter;
-      }
-      if (GALLERY_MEDIA_SORTS.includes(nextSort)) {
-        payload.galleryLastMediaSort = nextSort;
-      }
+      const payload = pendingPreferencesRef.current;
+      pendingPreferencesRef.current = {};
       if (Object.keys(payload).length === 0) return;
 
       void fetch('/api/gallery/settings', {
@@ -210,6 +225,12 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       }).catch(() => {});
     }, 400);
   }, []);
+
+  const handleGridColumnsChange = useCallback((nextValue) => {
+    const next = clampGalleryGridColumns(nextValue);
+    setMediaGridColumns(next);
+    persistGalleryMediaPreferences(undefined, undefined, next);
+  }, [persistGalleryMediaPreferences]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
@@ -262,6 +283,11 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
 
       const nextFilter = payload?.galleryLastMediaFilter;
       const nextSort = payload?.galleryLastMediaSort;
+      const nextGridColumns = Number(payload?.galleryLastMediaGridColumns);
+
+      if (Number.isFinite(nextGridColumns)) {
+        setMediaGridColumns(clampGalleryGridColumns(nextGridColumns));
+      }
 
       if (GALLERY_MEDIA_SORTS.includes(nextSort) && typeof setSortMode === 'function') {
         setSortMode(nextSort);
@@ -791,7 +817,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
                   onChipChange={handleChipChange}
                   onOpenFilter={handleOpenFilter}
                   gridColumns={mediaGridColumns}
-                  onGridColumnsChange={setMediaGridColumns}
+                  onGridColumnsChange={handleGridColumnsChange}
                 />
 
               {loadingPhotos ? (

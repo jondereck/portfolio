@@ -16,6 +16,7 @@ export const defaultAdminIntegrations = {
   galleryLastMediaFilter: 'all',
   galleryLastMediaSort: 'custom',
   galleryLastDriveFolderSort: 'recent',
+  galleryLastMediaGridColumns: 4,
 };
 
 export const defaultAdminSecurity = {

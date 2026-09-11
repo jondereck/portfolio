@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import GalleryMediaCard from './GalleryMediaCard';
 
 function isVideoMime(mimeType) {
@@ -9,6 +9,42 @@ function isVideoMime(mimeType) {
 
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_THRESHOLD_PX = 8;
+
+const MOBILE_GRID_COL_CLASS = {
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+};
+
+const SM_GRID_COL_CLASS = {
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-3',
+  4: 'sm:grid-cols-4',
+  5: 'sm:grid-cols-5',
+  6: 'sm:grid-cols-6',
+  7: 'sm:grid-cols-7',
+  8: 'sm:grid-cols-8',
+};
+
+const LG_GRID_COL_CLASS = {
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+  5: 'lg:grid-cols-5',
+  6: 'lg:grid-cols-6',
+  7: 'lg:grid-cols-7',
+  8: 'lg:grid-cols-8',
+};
+
+const XL_GRID_COL_CLASS = {
+  2: 'xl:grid-cols-2',
+  3: 'xl:grid-cols-3',
+  4: 'xl:grid-cols-4',
+  5: 'xl:grid-cols-5',
+  6: 'xl:grid-cols-6',
+  7: 'xl:grid-cols-7',
+  8: 'xl:grid-cols-8',
+};
 
 function photoIdFromPoint(clientX, clientY) {
   if (typeof document === 'undefined') return null;
@@ -33,15 +69,23 @@ export default function GalleryMediaGrid({
   const orderedIds = useMemo(() => (Array.isArray(photos) ? photos.map((photo) => photo.id) : []), [photos]);
   const selectedCount = Array.isArray(selectedPhotoIds) ? selectedPhotoIds.length : 0;
   const normalizedGridColumns = Math.max(2, Math.min(8, Number(gridColumns) || 4));
-  const mobileGridColumns = 2;
-  const smallGridColumns = Math.max(2, Math.min(3, normalizedGridColumns));
+  const mobileGridColumns = Math.max(2, Math.min(4, normalizedGridColumns));
+  const smallGridColumns = normalizedGridColumns;
   const largeGridColumns = inspectorOpen
-    ? Math.max(3, Math.min(4, normalizedGridColumns))
-    : Math.max(3, Math.min(6, normalizedGridColumns));
-  const extraLargeGridColumns = inspectorOpen
-    ? Math.max(3, Math.min(5, normalizedGridColumns))
+    ? Math.max(2, Math.min(4, normalizedGridColumns))
     : normalizedGridColumns;
+  const extraLargeGridColumns = inspectorOpen
+    ? Math.max(2, Math.min(6, normalizedGridColumns))
+    : normalizedGridColumns;
+  const gridClassName = [
+    MOBILE_GRID_COL_CLASS[mobileGridColumns] || 'grid-cols-2',
+    SM_GRID_COL_CLASS[smallGridColumns] || 'sm:grid-cols-4',
+    LG_GRID_COL_CLASS[largeGridColumns] || 'lg:grid-cols-4',
+    XL_GRID_COL_CLASS[extraLargeGridColumns] || 'xl:grid-cols-4',
+  ].join(' ');
+  const selectionMode = selectedCount > 0;
   const [touchSelecting, setTouchSelecting] = useState(false);
+  const gridRef = useRef(null);
   const touchSelectStateRef = useRef({
     mode: 'idle',
     pointerId: null,
@@ -50,15 +94,29 @@ export default function GalleryMediaGrid({
     startY: 0,
     anchorPhotoId: null,
     lastPhotoId: null,
-    captureEl: null,
     orderedIds: [],
   });
   const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef(null);
+
+  const releasePointerCapture = (pointerId) => {
+    const node = gridRef.current;
+    if (!node || pointerId == null) return;
+    try {
+      if (typeof node.hasPointerCapture === 'function' && node.hasPointerCapture(pointerId)) {
+        node.releasePointerCapture(pointerId);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const resetTouchSelect = () => {
-    if (touchSelectStateRef.current.timerId) {
-      clearTimeout(touchSelectStateRef.current.timerId);
+    const state = touchSelectStateRef.current;
+    if (state.timerId) {
+      clearTimeout(state.timerId);
     }
+    releasePointerCapture(state.pointerId);
     touchSelectStateRef.current = {
       mode: 'idle',
       pointerId: null,
@@ -67,11 +125,40 @@ export default function GalleryMediaGrid({
       startY: 0,
       anchorPhotoId: null,
       lastPhotoId: null,
-      captureEl: null,
       orderedIds: [],
     };
     setTouchSelecting(false);
   };
+
+  const suppressNextClick = () => {
+    suppressClickRef.current = true;
+    if (suppressClickTimerRef.current) {
+      clearTimeout(suppressClickTimerRef.current);
+    }
+    suppressClickTimerRef.current = setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressClickTimerRef.current = null;
+    }, 500);
+  };
+
+  useEffect(() => {
+    const endGesture = (event) => {
+      const state = touchSelectStateRef.current;
+      if (state.mode === 'idle' && !state.timerId) return;
+      if (event.pointerId != null && state.pointerId != null && event.pointerId !== state.pointerId) return;
+      resetTouchSelect();
+    };
+
+    window.addEventListener('pointerup', endGesture);
+    window.addEventListener('pointercancel', endGesture);
+    return () => {
+      window.removeEventListener('pointerup', endGesture);
+      window.removeEventListener('pointercancel', endGesture);
+      if (suppressClickTimerRef.current) {
+        clearTimeout(suppressClickTimerRef.current);
+      }
+    };
+  }, []);
 
   if (!Array.isArray(photos) || photos.length === 0) {
     return <div className="px-4 pb-6 sm:px-5 lg:px-6">{emptyState}</div>;
@@ -79,12 +166,9 @@ export default function GalleryMediaGrid({
 
   return (
     <div
-      className={`grid grid-cols-[repeat(var(--gallery-grid-cols-mobile),minmax(0,1fr))] gap-3 px-4 pb-6 sm:grid-cols-[repeat(var(--gallery-grid-cols-sm),minmax(0,1fr))] sm:px-5 lg:grid-cols-[repeat(var(--gallery-grid-cols-lg),minmax(0,1fr))] lg:px-6 xl:grid-cols-[repeat(var(--gallery-grid-cols-xl),minmax(0,1fr))] ${selectedCount > 0 ? 'pb-32 lg:pb-28' : ''} select-none`}
+      ref={gridRef}
+      className={`grid ${gridClassName} gap-3 px-4 pb-6 sm:px-5 lg:px-6 ${selectedCount > 0 ? 'pb-32 lg:pb-28' : ''} select-none`}
       style={{
-        '--gallery-grid-cols-mobile': mobileGridColumns,
-        '--gallery-grid-cols-sm': smallGridColumns,
-        '--gallery-grid-cols-lg': largeGridColumns,
-        '--gallery-grid-cols-xl': extraLargeGridColumns,
         touchAction: touchSelecting ? 'none' : 'pan-y',
         userSelect: 'none',
         WebkitUserSelect: 'none',
@@ -131,6 +215,10 @@ export default function GalleryMediaGrid({
               event.preventDefault();
               event.stopPropagation();
               suppressClickRef.current = false;
+              if (suppressClickTimerRef.current) {
+                clearTimeout(suppressClickTimerRef.current);
+                suppressClickTimerRef.current = null;
+              }
             }}
             onPointerDown={(event) => {
               if (event.pointerType !== 'touch') return;
@@ -146,7 +234,6 @@ export default function GalleryMediaGrid({
                 clearTimeout(touchSelectStateRef.current.timerId);
               }
 
-              const captureEl = event.currentTarget instanceof Element ? event.currentTarget : null;
               const pointerId = event.pointerId;
               const anchorPhotoId = photo.id;
               const nextOrderedIds = orderedIds;
@@ -160,11 +247,11 @@ export default function GalleryMediaGrid({
                 touchSelectStateRef.current.timerId = null;
                 touchSelectStateRef.current.lastPhotoId = anchorPhotoId;
                 touchSelectStateRef.current.orderedIds = nextOrderedIds;
-                suppressClickRef.current = true;
+                suppressNextClick();
                 setTouchSelecting(true);
 
                 try {
-                  touchSelectStateRef.current.captureEl?.setPointerCapture?.(pointerId);
+                  gridRef.current?.setPointerCapture?.(pointerId);
                 } catch {
                   // ignore
                 }
@@ -180,16 +267,15 @@ export default function GalleryMediaGrid({
                 startY: event.clientY,
                 anchorPhotoId,
                 lastPhotoId: null,
-                captureEl,
                 orderedIds: nextOrderedIds,
               };
-              setTouchSelecting(false);
             }}
           >
             <GalleryMediaCard
               photo={photo}
               albumName={albumName}
               selected={selected}
+              selectionMode={selectionMode}
               statusLabel={statusLabel}
               blurUnclothyGenerated={blurUnclothyGenerated}
               onOpenPreview={() => onOpenPreview?.(photo)}

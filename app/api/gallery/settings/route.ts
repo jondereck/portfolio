@@ -7,6 +7,12 @@ import { toErrorResponse } from '@/lib/server/api-responses';
 import { isRateLimited } from '@/lib/server/rate-limit';
 import { galleryCmsPreferencesSchema } from '@/lib/validators';
 
+function clampGalleryGridColumns(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.max(2, Math.min(8, Math.round(parsed)));
+}
+
 function toGallerySettingsPayload(integrations: Awaited<ReturnType<typeof getAdminSettings>>['integrations']) {
   const mediaFilter = integrations.galleryLastMediaFilter;
   const mediaSort = integrations.galleryLastMediaSort;
@@ -20,6 +26,7 @@ function toGallerySettingsPayload(integrations: Awaited<ReturnType<typeof getAdm
     galleryLastMediaSort:
       mediaSort === 'dateDesc' || mediaSort === 'dateAsc' ? mediaSort : 'custom',
     galleryLastDriveFolderSort: integrations.galleryLastDriveFolderSort === 'name' ? 'name' : 'recent',
+    galleryLastMediaGridColumns: clampGalleryGridColumns(integrations.galleryLastMediaGridColumns),
   };
 }
 
@@ -57,7 +64,8 @@ export async function PATCH(request: Request) {
     if (
       parsed.data.galleryLastMediaFilter === undefined &&
       parsed.data.galleryLastMediaSort === undefined &&
-      parsed.data.galleryLastDriveFolderSort === undefined
+      parsed.data.galleryLastDriveFolderSort === undefined &&
+      parsed.data.galleryLastMediaGridColumns === undefined
     ) {
       const { integrations } = await getAdminSettings({ fresh: true });
       return NextResponse.json(toGallerySettingsPayload(integrations));

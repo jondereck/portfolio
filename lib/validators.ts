@@ -191,6 +191,7 @@ export const integrationsSettingsSchema = z.object({
   galleryLastMediaFilter: z.enum(['all', 'images', 'videos', 'audio', 'nsfw']).optional().default('all'),
   galleryLastMediaSort: z.enum(['custom', 'dateDesc', 'dateAsc']).optional().default('custom'),
   galleryLastDriveFolderSort: z.enum(['recent', 'name']).optional().default('recent'),
+  galleryLastMediaGridColumns: z.number().int().min(2).max(8).optional().default(4),
 });
 
 export const galleryCmsPreferencesSchema = z
@@ -198,6 +199,7 @@ export const galleryCmsPreferencesSchema = z
     galleryLastMediaFilter: z.enum(['all', 'images', 'videos', 'audio', 'nsfw']).optional(),
     galleryLastMediaSort: z.enum(['custom', 'dateDesc', 'dateAsc']).optional(),
     galleryLastDriveFolderSort: z.enum(['recent', 'name']).optional(),
+    galleryLastMediaGridColumns: z.number().int().min(2).max(8).optional(),
   })
   .strict();
 
