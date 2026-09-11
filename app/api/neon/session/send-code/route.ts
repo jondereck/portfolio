@@ -44,17 +44,17 @@ export async function POST(request: Request) {
   }
 
   const email = normalizeEmail(parsed.data.email);
+  // Same success payload for registered and unregistered emails so callers
+  // cannot enumerate admin/account existence from status/body differences.
+  const genericSuccess = {
+    ok: true,
+    message: 'If this email is registered, a sign-in code has been sent.',
+  };
 
   try {
     const registered = await isRegisteredSignInEmail(email);
     if (!registered) {
-      return NextResponse.json(
-        {
-          error: 'This email is not registered. Create an account first or use Google sign-in.',
-          errorCode: 'EMAIL_NOT_REGISTERED',
-        },
-        { status: 404 },
-      );
+      return NextResponse.json(genericSuccess);
     }
 
     const result = await auth.emailOtp.sendVerificationOtp({
@@ -63,13 +63,20 @@ export async function POST(request: Request) {
     });
 
     if (result?.error) {
+      // Avoid leaking "not found" / account existence via Neon error shapes.
       const mapped = mapNeonAuthError(result.error, 'send-code');
+      if (mapped.body.errorCode === 'ACCOUNT_NOT_FOUND' || mapped.status === 404) {
+        return NextResponse.json(genericSuccess);
+      }
       return NextResponse.json(mapped.body, { status: mapped.status });
     }
 
-    return NextResponse.json({ ok: true, message: 'A sign-in code has been sent to your email.' });
+    return NextResponse.json(genericSuccess);
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'send-code');
+    if (mapped.body.errorCode === 'ACCOUNT_NOT_FOUND' || mapped.status === 404) {
+      return NextResponse.json(genericSuccess);
+    }
     return NextResponse.json(mapped.body, { status: mapped.status });
   }
 }

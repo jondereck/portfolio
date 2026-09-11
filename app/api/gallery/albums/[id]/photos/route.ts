@@ -4,7 +4,7 @@ import { toAuthErrorResponse } from '@/lib/auth/responses';
 import { canAccessProfile, resolveRequestActor } from '@/lib/auth/session';
 import { isRateLimited } from '@/lib/server/rate-limit';
 import { toErrorResponse } from '@/lib/server/api-responses';
-import { resolveManagedProfileFromRequest, resolvePublicProfileFromRequest } from '@/lib/profile/resolve-profile';
+import { resolveManagedProfileFromRequest } from '@/lib/profile/resolve-profile';
 import { parseMultipartOrJson } from '@/lib/server/request-parsing';
 import { bulkPhotoBlurOverrideSchema, gallerySortSchema, photoCreateSchema } from '@/src/modules/gallery/contracts';
 import { galleryService } from '@/src/modules/gallery/services/galleryService';
@@ -39,32 +39,14 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ ...sharedResult, accessMode: isOwner ? 'owner' : 'shared' });
     }
 
-    try {
-      const { profile } = await resolveManagedProfileFromRequest(request);
-      const ownedResult = await galleryService.listAlbumPhotos(albumId, profile.id, sort, true);
-      if (!ownedResult) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      }
-
-      return NextResponse.json({ ...ownedResult, accessMode: 'owner' });
-    } catch (managedError) {
-      if (!(managedError instanceof Error) || (managedError.message !== 'UNAUTHENTICATED' && managedError.message !== 'FORBIDDEN')) {
-        throw managedError;
-      }
-
-      const resolved = await resolvePublicProfileFromRequest(request);
-      if (!resolved?.profile) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      }
-
-      const publicResult = await galleryService.listAlbumPhotos(albumId, resolved.profile.id, sort, false);
-      if (!publicResult) {
-        return NextResponse.json({ error: 'Not found' }, { status: 404 });
-      }
-
-      return NextResponse.json({ ...publicResult, accessMode: 'public' });
+    // Private gallery: authenticated owner/admin only when no share token is provided.
+    const { profile } = await resolveManagedProfileFromRequest(request);
+    const ownedResult = await galleryService.listAlbumPhotos(albumId, profile.id, sort, true);
+    if (!ownedResult) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
+    return NextResponse.json({ ...ownedResult, accessMode: 'owner' });
   } catch (error) {
     const authError = toAuthErrorResponse(error);
     if (authError) {
