@@ -201,7 +201,7 @@ export default function GalleryAlbumSwitchSheet({
                   return (
                     <div
                       key={album.id}
-                      className={`w-full rounded-[24px] border p-3 text-left shadow-sm transition ${
+                      className={`w-full rounded-xl border p-3 text-left shadow-sm transition ${
                         isSelected
                           ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900'
                           : 'border-slate-200 bg-white text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50'

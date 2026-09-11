@@ -53,7 +53,7 @@ export default function AdminSidebarSkeleton({ collapsed = false }) {
 
         <div className="mt-auto border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
           <div
-            className={`flex w-full items-center gap-3 rounded-[24px] border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40 ${
+            className={`flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40 ${
               collapsed ? 'justify-center' : ''
             }`}
           >

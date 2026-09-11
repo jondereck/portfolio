@@ -218,7 +218,7 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
     : '';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <GalleryCreateAlbumModal
         open={createAlbumOpen}
         onOpenChange={setCreateAlbumOpen}
@@ -243,7 +243,7 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
         />
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
         <GalleryAlbumPicker
           albums={albums}
           selectedAlbumId={selectedAlbumId}
@@ -254,7 +254,7 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
         />
 
         {selectedAlbum ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <GalleryPanelCard
               title={`Import into ${selectedAlbum.name}`}
               description="The import route is intentionally limited to import-related controls."

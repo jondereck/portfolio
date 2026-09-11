@@ -4,6 +4,18 @@ import { cn } from '@/lib/utils';
 import { parseErrorResponse } from '@/lib/form-client';
 
 export const cardStyles = 'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
+export const pageStackStyles = 'space-y-4';
+export const contentPadStyles = 'p-3 sm:p-4';
+export const sectionHeaderStyles =
+  'flex flex-col gap-3 border-b border-slate-100 p-4 md:flex-row md:items-center md:justify-between dark:border-slate-800';
+export const sectionTitleStyles = 'text-lg font-semibold text-slate-900 dark:text-slate-100';
+export const sectionActionsStyles = 'flex flex-wrap items-center gap-2';
+export const topbarStyles =
+  'rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm sm:px-4 dark:border-slate-800 dark:bg-slate-900';
+export const overviewCardStyles =
+  'relative flex h-full min-h-[140px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition duration-300 ease-out hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:min-h-[220px] sm:p-5';
+export const metricCardStyles =
+  'rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4';
 export const inputStyles =
   'h-10 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950';
 export const textareaStyles =

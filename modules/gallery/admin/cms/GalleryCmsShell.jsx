@@ -44,7 +44,7 @@ export default function GalleryCmsShell({
       : 'lg:grid-cols-[280px_minmax(0,1fr)]';
 
   const shell = (
-    <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {header}
 
       <motion.div

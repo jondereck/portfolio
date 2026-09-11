@@ -141,7 +141,7 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
   }, [albums, moveTargetAlbumId]);
 
   return (
-    <div className={embedded ? '' : 'space-y-6'}>
+    <div className={embedded ? '' : 'space-y-4'}>
       <ConfirmModal
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}

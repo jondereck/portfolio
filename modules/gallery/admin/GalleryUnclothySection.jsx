@@ -433,7 +433,7 @@ export default function GalleryUnclothySection({
         </div>
       ) : null}
 
-      <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Quick info</p>
@@ -452,7 +452,7 @@ export default function GalleryUnclothySection({
         ) : null}
 
         {displayTask ? (
-          <div className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/30">
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/30">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">{displayTask.statusText || 'Working\u2026'}</p>
@@ -479,7 +479,7 @@ export default function GalleryUnclothySection({
             </div>
           </div>
         ) : queue.length > 0 ? (
-          <div className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-200">
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-200">
             {queue.length} task(s) queued.
           </div>
         ) : null}
@@ -565,7 +565,7 @@ export default function GalleryUnclothySection({
         ) : null}
       </div>
 
-      <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Basic settings</p>
@@ -603,7 +603,7 @@ export default function GalleryUnclothySection({
         </div>
       </div>
 
-      <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">Advanced settings</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">

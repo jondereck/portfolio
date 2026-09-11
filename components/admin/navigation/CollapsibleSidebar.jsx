@@ -145,7 +145,7 @@ export default function CollapsibleSidebar({
         <div className="mt-auto border-t border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
           <Menu as="div" className={`relative ${collapsed ? '' : 'w-full'}`}>
             <Menu.Button
-              className={`flex w-full items-center gap-3 rounded-[24px] border border-slate-200 bg-slate-50 p-3 text-left transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950/40 dark:hover:bg-slate-800 ${collapsed ? 'justify-center' : ''}`}
+              className={`flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950/40 dark:hover:bg-slate-800 ${collapsed ? 'justify-center' : ''}`}
               aria-label="Account menu"
             >
               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-950 text-white shadow-sm dark:bg-slate-50 dark:text-slate-900">

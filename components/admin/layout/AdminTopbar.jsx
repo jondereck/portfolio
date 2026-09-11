@@ -2,13 +2,15 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useMemo, useState } from 'react';
 import { LogOut, User, X } from 'lucide-react';
 import AdminBreadcrumbs from '@/components/admin/layout/AdminBreadcrumbs';
 import { adminNavigationSections } from '@/components/admin/navigation/admin-nav-config';
 import { getAvatarInitials } from '@/lib/auth/avatar-display';
+import { topbarStyles } from '@/modules/system/admin/settingsShared';
+import { cn } from '@/lib/utils';
 
 const pageTitles = {
   '/admin': 'Admin Dashboard',
@@ -19,6 +21,7 @@ const pageTitles = {
   '/admin/portfolio/certificates': 'Certificates Administration',
   '/admin/portfolio/homepage': 'Homepage Administration',
   '/admin/portfolio/experience': 'Experience Administration',
+  '/admin/portfolio/theme': 'Theme Administration',
   '/admin/gallery': 'Gallery Administration',
   '/admin/gallery/workspace': 'Gallery Workspace',
   '/admin/gallery/manage': 'Album Management',
@@ -26,19 +29,26 @@ const pageTitles = {
   '/admin/gallery/media': 'Media Management',
   '/admin/gallery/arrange': 'Media Arrangement',
   '/admin/gallery/import': 'Media Import',
+  '/admin/gallery/settings': 'Gallery Settings',
   '/admin/account': 'My Account',
   '/admin/settings': 'Site Settings',
   '/admin/navigation': 'Navigation Settings',
   '/admin/integrations': 'Integrations',
   '/admin/security': 'Security & Access',
   '/admin/users': 'User Management',
+  '/admin/media-scraper': 'Media Scraper',
 };
 
 function AccountAvatar({ accountImage = '', accountInitial = '', className = 'h-11 w-11', iconClassName = 'size-4' }) {
   const resolvedImage = String(accountImage || '').trim();
 
   return (
-    <div className={`relative inline-flex shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${className}`}>
+    <div
+      className={cn(
+        'relative inline-flex shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+        className,
+      )}
+    >
       {resolvedImage ? (
         <img src={resolvedImage} alt="" className="h-full w-full rounded-full object-cover" referrerPolicy="no-referrer" />
       ) : accountInitial ? (
@@ -58,11 +68,10 @@ export default function AdminTopbar({
   sections = adminNavigationSections,
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const title = useMemo(() => pageTitles[pathname] ?? 'Admin Control Center', [pathname]);
-  const canGoBack = useMemo(() => pathname !== '/admin' && pathname !== '/admin/login', [pathname]);
+  const showBreadcrumbs = useMemo(() => pathname !== '/admin' && pathname !== '/admin/login', [pathname]);
   const resolvedAccountName = String(accountName || '').trim();
   const accountInitial = getAvatarInitials(resolvedAccountName);
 
@@ -80,20 +89,23 @@ export default function AdminTopbar({
 
   return (
     <>
-      <header className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm md:p-4 dark:border-slate-800 dark:bg-slate-900">
+      <header className={topbarStyles}>
         <div className="md:hidden">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2">
-              <div className="flex items-center gap-2">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Control Center</p>
-              </div>
-              <h1 className="text-2xl font-bold leading-tight text-slate-900 dark:text-slate-100">{title}</h1>
+            <div className="min-w-0 space-y-1.5">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Control Center</p>
+              <h1 className="text-xl font-bold leading-tight text-slate-900 dark:text-slate-100">{title}</h1>
+              {showBreadcrumbs ? (
+                <div className="pt-0.5">
+                  <AdminBreadcrumbs />
+                </div>
+              ) : null}
             </div>
 
             <button
               type="button"
               onClick={() => setIsMenuOpen(true)}
-              className="rounded-full transition hover:opacity-90"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full transition hover:opacity-90"
               aria-label="Open admin menu"
               title="Open admin menu"
             >
@@ -103,17 +115,11 @@ export default function AdminTopbar({
         </div>
 
         <div className="hidden md:flex md:flex-row md:items-start md:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Control Center</p>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
-            <div>
-              <AdminBreadcrumbs />
-            </div>
+          <div className="min-w-0 space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Control Center</p>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 lg:text-2xl">{title}</h1>
+            <AdminBreadcrumbs />
           </div>
-
-          <div className="flex items-center justify-end gap-2" />
         </div>
       </header>
 
@@ -141,29 +147,27 @@ export default function AdminTopbar({
               leaveFrom="opacity-100 translate-y-0"
               leaveTo="opacity-0 translate-y-4"
             >
-              <Dialog.Panel className="flex max-h-[min(44rem,calc(100dvh-1.5rem))] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Admin Control Center</p>
-                  
-                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      Open a section without forcing the desktop sidebar onto mobile.
-                    </p>
+              <Dialog.Panel className="flex max-h-[min(44rem,calc(100dvh-1.5rem))] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-3 py-3 dark:border-slate-800">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Admin menu</p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Jump to a section</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsMenuOpen(false)}
-                    className="rounded-md border border-slate-300 p-2 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label="Close menu"
                   >
                     <X className="size-4" />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-4 py-4">
-                  <nav className="space-y-5">
+                <div className="flex-1 overflow-y-auto px-3 py-3">
+                  <nav className="space-y-4">
                     {sections.map((section) => (
                       <section key={section.title} className="space-y-2">
-                        <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{section.title}</h3>
+                        <h3 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{section.title}</h3>
                         <div className="grid grid-cols-2 gap-2">
                           {section.items.map((item) => {
                             const active = isActivePath(item.href);
@@ -173,13 +177,14 @@ export default function AdminTopbar({
                                 key={item.href + item.label}
                                 href={item.href}
                                 onClick={() => setIsMenuOpen(false)}
-                                className={`min-h-16 rounded-xl px-3 py-3 text-sm transition ${
+                                className={cn(
+                                  'inline-flex min-h-11 items-center rounded-xl px-3 py-2.5 text-sm font-medium transition',
                                   active
                                     ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-800'
-                                }`}
+                                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:bg-slate-800',
+                                )}
                               >
-                                <span className="block text-sm font-medium leading-5">{item.label}</span>
+                                <span className="leading-5">{item.label}</span>
                               </Link>
                             );
                           })}
@@ -189,19 +194,20 @@ export default function AdminTopbar({
                   </nav>
                 </div>
 
-                <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-4 dark:border-slate-800 dark:bg-slate-950/40">
-                    <div className="flex flex-col items-center text-center">
+                <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-950/40">
+                    <div className="flex items-center gap-3">
                       <AccountAvatar
                         accountImage={accountImage}
                         accountInitial={accountInitial}
-                        className="h-14 w-14 border-0 bg-slate-950 text-white dark:bg-slate-50 dark:text-slate-900"
+                        className="h-11 w-11 border-0 bg-slate-950 text-white dark:bg-slate-50 dark:text-slate-900"
                         iconClassName="size-5"
                       />
-
-                      <div className="mt-3 min-w-0">
-                        <p className="truncate text-base font-semibold text-slate-900 dark:text-slate-50">{resolvedAccountName || 'Account'}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Account</p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+                          {resolvedAccountName || 'Account'}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Signed in</p>
                       </div>
                     </div>
 
@@ -209,10 +215,10 @@ export default function AdminTopbar({
                       <Link
                         href="/admin/account"
                         onClick={() => setIsMenuOpen(false)}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                       >
                         <User className="size-4" />
-                        Manage account
+                        Account
                       </Link>
 
                       <button
@@ -222,7 +228,7 @@ export default function AdminTopbar({
                           onLogout?.();
                         }}
                         disabled={!onLogout || isLoggingOut}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                       >
                         <LogOut className="size-4" />
                         {isLoggingOut ? 'Logging out...' : 'Logout'}

@@ -11,6 +11,14 @@ import AdminOverviewCard from '@/components/admin/shared/AdminOverviewCard';
 
 const portfolioOverviewCards = [
   {
+    title: 'Full Portfolio Workspace',
+    description: 'Open the integrated portfolio workspace when you need every section in one operational view.',
+    href: '/admin/portfolio/manage',
+    icon: Layers3,
+    badge: 'Workspace',
+    accent: 'slate',
+  },
+  {
     title: 'Manage Homepage',
     description: 'Edit hero and about homepage sections without leaving the admin surface.',
     href: '/admin/portfolio/homepage',
@@ -58,22 +66,12 @@ const portfolioOverviewCards = [
     badge: 'Theme',
     accent: 'sky',
   },
-  {
-    title: 'Full Portfolio Workspace',
-    description: 'Open the integrated portfolio workspace when you need every section in one operational view.',
-    href: '/admin/portfolio/manage',
-    icon: Layers3,
-    badge: 'Workspace',
-    accent: 'slate',
-  },
 ];
 
 export default function PortfolioAdminPage() {
   return (
-    <div className="space-y-6">
-
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-4">
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-3">
         {portfolioOverviewCards.map((card) => (
           <AdminOverviewCard key={card.title} {...card} />
         ))}

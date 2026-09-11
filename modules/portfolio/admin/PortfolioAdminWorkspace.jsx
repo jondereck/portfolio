@@ -18,7 +18,7 @@ export default function PortfolioAdminWorkspace({ focusSection = null }) {
   const normalized = focusSection ? sectionMap[focusSection] ?? null : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {(normalized === null || normalized === 'homepage') ? <SiteContentSection /> : null}
       {(normalized === null || normalized === 'homepage') ? <SiteBrandingSection /> : null}
       {(normalized === null || normalized === 'theme') ? <SiteConfigSection /> : null}
@@ -29,9 +29,9 @@ export default function PortfolioAdminWorkspace({ focusSection = null }) {
         ))}
 
       {normalized === 'contact' ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="text-xl font-semibold">Contact Info</h2>
-          <p className="mt-2 text-sm text-slate-500">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold">Contact Info</h2>
+          <p className="mt-1.5 text-sm text-slate-500">
             Contact details are currently managed directly in source content. A dedicated contact admin module can be added here next.
           </p>
         </section>

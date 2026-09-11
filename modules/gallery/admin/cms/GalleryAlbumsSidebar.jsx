@@ -69,7 +69,7 @@ export default function GalleryAlbumsSidebar({
   return (
     <>
       <section className="border-b border-slate-200 px-4 py-3 sm:px-5 lg:hidden dark:border-slate-800">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
@@ -149,7 +149,7 @@ export default function GalleryAlbumsSidebar({
    
 
           {!loadingAlbums && resolvedAlbums.length === 0 ? (
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               Create an album to get started.
             </div>
           ) : null}
@@ -238,7 +238,7 @@ export default function GalleryAlbumsSidebar({
                 return (
                   <div
                     key={album.id}
-                    className={`w-full rounded-[22px] border p-2.5 text-left transition ${
+                    className={`w-full rounded-xl border p-2.5 text-left transition ${
                       isActive
                         ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900'
                         : 'border-slate-200 bg-white text-slate-900 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:border-slate-700'

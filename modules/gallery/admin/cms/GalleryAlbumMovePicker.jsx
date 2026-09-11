@@ -113,7 +113,7 @@ export default function GalleryAlbumMovePicker({
             leaveFrom="opacity-100 translate-y-0 lg:scale-100"
             leaveTo="opacity-0 translate-y-6 lg:translate-y-2 lg:scale-95"
           >
-            <Dialog.Panel className="w-full overflow-hidden rounded-t-[32px] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 lg:max-h-[min(46rem,calc(100dvh-3rem))] lg:max-w-xl lg:rounded-3xl">
+            <Dialog.Panel className="w-full overflow-hidden rounded-t-[32px] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 lg:max-h-[min(46rem,calc(100dvh-3rem))] lg:max-w-xl lg:rounded-xl">
               <div className="px-4 pb-4 pt-3 sm:px-5">
                 <div className="mx-auto h-1.5 w-14 rounded-full bg-slate-200 dark:bg-slate-700 lg:hidden" />
 
@@ -172,7 +172,7 @@ export default function GalleryAlbumMovePicker({
 
               <div className="max-h-[min(22rem,calc(100dvh-18rem))] overflow-y-auto px-4 pb-4 sm:px-5 lg:max-h-[min(28rem,calc(100dvh-18rem))]">
                 {filteredAlbums.length === 0 ? (
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
                     No albums match your search.
                   </div>
                 ) : (
@@ -188,7 +188,7 @@ export default function GalleryAlbumMovePicker({
                           key={album.id}
                           type="button"
                           onClick={() => setPendingAlbumId(album.id)}
-                          className={`w-full rounded-3xl border p-3 text-left transition ${
+                          className={`w-full rounded-xl border p-3 text-left transition ${
                             isSelected
                               ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900'
                               : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800'

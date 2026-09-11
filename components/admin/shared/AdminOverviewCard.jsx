@@ -61,7 +61,7 @@ export default function AdminOverviewCard({
     >
       <article
         className={cn(
-          'relative flex h-full min-h-[180px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition duration-300 ease-out hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:min-h-[220px] sm:p-5',
+          'relative flex h-full min-h-[140px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition duration-300 ease-out hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:min-h-[220px] sm:p-5',
           styles.glow,
         )}
       >
@@ -74,11 +74,11 @@ export default function AdminOverviewCard({
         <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-transparent transition duration-300 group-hover:ring-slate-950/5 group-focus-visible:ring-slate-950/5 dark:group-hover:ring-white/10 dark:group-focus-visible:ring-white/10" />
 
         <div className="relative flex h-full flex-col">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-2 sm:gap-3">
             {Icon ? (
               <span
                 className={cn(
-                  'inline-flex size-10 items-center justify-center rounded-2xl border transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.02] group-focus-visible:-translate-y-0.5 group-focus-visible:scale-[1.02] sm:size-11',
+                  'inline-flex size-9 items-center justify-center rounded-2xl border transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-[1.02] group-focus-visible:-translate-y-0.5 group-focus-visible:scale-[1.02] sm:size-11',
                   styles.icon,
                 )}
               >
@@ -91,7 +91,7 @@ export default function AdminOverviewCard({
             {badge ? (
               <span
                 className={cn(
-                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] sm:px-2.5 sm:py-1 sm:text-[11px]',
+                  'inline-flex max-w-[48%] items-center truncate rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] sm:max-w-none sm:px-2.5 sm:py-1 sm:text-[11px]',
                   styles.badge,
                 )}
               >
@@ -100,13 +100,16 @@ export default function AdminOverviewCard({
             ) : null}
           </div>
 
-          <div className="mt-5 space-y-2 sm:mt-8 sm:space-y-3">
-            <h3 className="text-base font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-lg">{title}</h3>
-            <p className="max-w-[34ch] text-sm leading-5 text-slate-600 dark:text-slate-300 sm:leading-6">{description}</p>
+          <div className="mt-3 space-y-2 sm:mt-8 sm:space-y-3">
+            <h3 className="text-sm font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-lg">{title}</h3>
+            {description ? (
+              <p className="hidden max-w-[34ch] text-sm leading-5 text-slate-600 dark:text-slate-300 sm:block sm:leading-6">
+                {description}
+              </p>
+            ) : null}
           </div>
 
-          <div className="mt-auto flex items-center justify-between pt-5 sm:pt-8">
-     
+          <div className="mt-auto flex items-center justify-between pt-3 sm:pt-8">
             <ArrowRight
               className={cn(
                 'size-4 transition duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1',

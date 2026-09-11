@@ -18,10 +18,14 @@ const segmentLabels = {
   certificates: 'Certificates',
   homepage: 'Homepage',
   experience: 'Experience',
+  theme: 'Theme',
   albums: 'Albums',
   media: 'Media',
   arrange: 'Arrange',
   import: 'Import',
+  users: 'Users',
+  account: 'Account',
+  'media-scraper': 'Media Scraper',
 };
 
 function getLabel(segment) {

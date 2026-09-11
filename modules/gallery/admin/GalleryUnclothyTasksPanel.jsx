@@ -104,7 +104,7 @@ function RunningTaskCard({ task, onOpenTask, onCancelActive }) {
   const provider = task.providerStatus ? ` (${task.providerStatus})` : '';
 
   return (
-    <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-950 dark:text-slate-50">{phaseLabel(task.phase)}</p>
@@ -155,7 +155,7 @@ function QueuedTaskRow({ task, index, onOpenTask, onCancelQueued }) {
   const sourceLabel = getShortSourceLabel(task);
 
   return (
-    <div className="flex items-center gap-2 rounded-[22px] border border-slate-200 bg-white p-3 text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50">
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50">
       <button
         type="button"
         onClick={() =>
@@ -204,7 +204,7 @@ function HistoryRow({ task, onOpenTask }) {
   return (
     <button
       type="button"
-      className="flex w-full items-start gap-3 rounded-[22px] border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-900/60"
+      className="flex w-full items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-900/60"
       onClick={() => onOpenTask?.(openPayload)}
     >
       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100">
@@ -306,7 +306,7 @@ export default function GalleryUnclothyTasksPanel({
       return null;
     }
     return (
-      <div className="rounded-[28px] border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
         No generation tasks running.
       </div>
     );
@@ -314,7 +314,7 @@ export default function GalleryUnclothyTasksPanel({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
         <div className="flex items-center gap-1">
           <SegmentedTab active={tab === 'tasks'} label="Tasks" count={taskCount} onClick={() => setTab('tasks')} />
           <SegmentedTab active={tab === 'history'} label="History" count={historyCount} onClick={() => setTab('history')} />
@@ -324,7 +324,7 @@ export default function GalleryUnclothyTasksPanel({
       {tab === 'tasks' ? (
         <>
           {running.length > 0 ? (
-            <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Currently running</p>
@@ -348,12 +348,12 @@ export default function GalleryUnclothyTasksPanel({
           ) : null}
 
           {failed.length > 0 ? (
-            <div className="rounded-[28px] border border-rose-200 bg-rose-50 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/30">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/30">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-700 dark:text-rose-200">Failed</p>
               <div className="mt-3 space-y-3">
                 {failed.map((task) => (
                   <div key={task.id || task.queueTaskId} className="space-y-2">
-                    <div className="flex items-start gap-2 rounded-[22px] border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-100">
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-100">
                       <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
                       <span className="leading-6">{task.errorMessage || task.statusText || 'Task failed.'}</span>
                     </div>
@@ -380,7 +380,7 @@ export default function GalleryUnclothyTasksPanel({
           ) : null}
 
           {queued.length > 0 ? (
-            <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Pending queue</p>
@@ -410,13 +410,13 @@ export default function GalleryUnclothyTasksPanel({
           ) : null}
 
           {!hasTaskItems ? (
-            <div className="rounded-[28px] border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               No tasks right now.
             </div>
           ) : null}
         </>
       ) : completed.length > 0 ? (
-        <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Recently generated</p>
@@ -459,7 +459,7 @@ export default function GalleryUnclothyTasksPanel({
           </div>
         </div>
       ) : (
-        <div className="rounded-[28px] border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
           No history yet.
         </div>
       )}

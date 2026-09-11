@@ -5,8 +5,8 @@ import FormDialog from '@/components/FormDialog';
 import { useAdminData } from '@/hooks/useAdminData';
 import AdminSectionHeader from '@/components/admin/shared/AdminSectionHeader';
 import PortfolioProjectsArrangeTable from '@/modules/portfolio/admin/PortfolioProjectsArrangeTable';
-
-const cardStyles = 'rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
+import { cardStyles, contentPadStyles } from '@/modules/system/admin/settingsShared';
+import { cn } from '@/lib/utils';
 
 const newestFirst = (items) => {
   const list = Array.isArray(items) ? [...items] : [];
@@ -115,7 +115,7 @@ export default function PortfolioResourceSection({ resource }) {
           </>
         )}
       />
-      <div className="p-6">
+      <div className={cn(contentPadStyles, 'min-w-0')}>
         {error ? <div className="mb-4 rounded bg-red-100 p-3 text-red-700">{error}</div> : null}
         {key === 'portfolio' ? (
           <PortfolioProjectsArrangeTable

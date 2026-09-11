@@ -184,7 +184,7 @@ function ManageShortcutsModal({
           <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto p-3 sm:p-6">
+        <div className="fixed inset-0 overflow-y-auto p-3 sm:p-4">
           <div className="flex min-h-full items-center justify-center">
             <Transition.Child
               as={Fragment}
@@ -195,41 +195,41 @@ function ManageShortcutsModal({
               leaveFrom="opacity-100 scale-100 translate-y-0"
               leaveTo="opacity-0 scale-95 translate-y-2"
             >
-              <Dialog.Panel className="w-full max-w-5xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6 dark:border-slate-800">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              <Dialog.Panel className="w-full max-w-5xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-start sm:justify-between dark:border-slate-800">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Manage shortcuts
                     </p>
-                    <Dialog.Title className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+                    <Dialog.Title className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
                       Customize your dashboard
                     </Dialog.Title>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+                    <p className="mt-1.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
                       Choose which shortcuts appear on the dashboard and arrange the most important ones at the top.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     aria-label="Close"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="p-5 sm:p-6">
-                    <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
                         <h4 className="text-base font-semibold text-slate-950 dark:text-slate-50">Shortcut list</h4>
                         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                          Drag handles are represented here as compact dots. Use the arrows to reorder.
+                          Use the arrows to reorder.
                         </p>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {config.order.map((id, index) => {
                         const shortcut = shortcuts.find((item) => item.id === id);
                         if (!shortcut) return null;
@@ -239,10 +239,10 @@ function ManageShortcutsModal({
                         return (
                           <div
                             key={id}
-                            className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/30"
+                            className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/30"
                           >
                             <div className="flex items-start gap-3">
-                              <div className="mt-1 flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+                              <div className="mt-0.5 flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
                                 <span className="h-1 w-1 rounded-full bg-current" />
                                 <span className="h-1 w-1 rounded-full bg-current" />
                                 <span className="h-1 w-1 rounded-full bg-current" />
@@ -250,25 +250,25 @@ function ManageShortcutsModal({
 
                               <div
                                 className={cn(
-                                  'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border',
+                                  'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border',
                                   toneClasses(shortcut.tone),
                                 )}
                               >
-                                <Icon className="h-5 w-5" />
+                                <Icon className="h-4 w-4" />
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                      <span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800">
+                                      <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800">
                                         {String(index + 1).padStart(2, '0')}
                                       </span>
                                       <h5 className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">
                                         {shortcut.title}
                                       </h5>
                                     </div>
-                                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                                    <p className="mt-1 text-sm leading-5 text-slate-500 dark:text-slate-400">
                                       {shortcut.description}
                                     </p>
                                   </div>
@@ -278,7 +278,7 @@ function ManageShortcutsModal({
                                       type="button"
                                       onClick={() => onMoveUp(index)}
                                       disabled={index === 0}
-                                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                       aria-label="Move up"
                                       title="Move up"
                                     >
@@ -288,7 +288,7 @@ function ManageShortcutsModal({
                                       type="button"
                                       onClick={() => onMoveDown(index)}
                                       disabled={index === config.order.length - 1}
-                                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                       aria-label="Move down"
                                       title="Move down"
                                     >
@@ -298,7 +298,7 @@ function ManageShortcutsModal({
                                     <button
                                       type="button"
                                       onClick={() => onToggleEnabled(id)}
-                                      className="inline-flex items-center gap-2 self-start rounded-full bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800 dark:hover:bg-slate-800"
+                                      className="inline-flex min-h-11 items-center gap-2 self-start rounded-xl bg-white px-3 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800 dark:hover:bg-slate-800"
                                       aria-pressed={enabled}
                                     >
                                       <span
@@ -319,25 +319,25 @@ function ManageShortcutsModal({
                     </div>
                   </div>
 
-                  <aside className="border-t border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/30 lg:border-l lg:border-t-0 sm:p-6">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Preview</p>
-                    <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-slate-50">Visible on dashboard</h4>
-                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                      This side shows how the active shortcuts can appear in the quick actions section.
+                  <aside className="border-t border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/30 lg:border-l lg:border-t-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</p>
+                    <h4 className="mt-1.5 text-base font-semibold text-slate-950 dark:text-slate-50">Visible on dashboard</h4>
+                    <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+                      Active shortcuts as they can appear in quick actions.
                     </p>
 
-                    <div className="mt-4 grid gap-3">
+                    <div className="mt-3 grid gap-2">
                       {previewShortcuts.map((shortcut) => {
                         const Icon = shortcut.icon;
                         return (
                           <div
                             key={shortcut.id}
-                            className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                            className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div
                                 className={cn(
-                                  'inline-flex h-10 w-10 items-center justify-center rounded-2xl border',
+                                  'inline-flex h-10 w-10 items-center justify-center rounded-xl border',
                                   toneClasses(shortcut.tone),
                                 )}
                               >
@@ -345,33 +345,33 @@ function ManageShortcutsModal({
                               </div>
                               <ArrowRight className="h-4 w-4 text-slate-400" />
                             </div>
-                            <h5 className="mt-3 text-sm font-semibold text-slate-950 dark:text-slate-50">{shortcut.title}</h5>
+                            <h5 className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-50">{shortcut.title}</h5>
                             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{shortcut.description}</p>
                           </div>
                         );
                       })}
                     </div>
 
-                    <div className="mt-5 rounded-[22px] border border-dashed border-slate-300 bg-white/70 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-                      Tip: keep 4 to 6 shortcuts only so the dashboard stays clean and easy to scan.
+                    <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white/70 p-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
+                      Tip: keep 4 to 6 shortcuts so the dashboard stays easy to scan.
                     </div>
                   </aside>
                 </div>
 
-                <div className="flex flex-col gap-3 border-t border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div className="flex flex-col gap-3 border-t border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-slate-500 dark:text-slate-400">Changes here affect only the dashboard shortcut section.</p>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={onReset}
-                      className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                      className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
                       Reset
                     </button>
                     <button
                       type="button"
                       onClick={onSave}
-                      className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                      className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                     >
                       Save shortcuts
                     </button>
@@ -462,25 +462,25 @@ export default function AdminDashboardShortcuts({ moduleAccess = null }) {
         onSave={handleSave}
       />
 
-      <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">Quick shortcuts</p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Fast entry points</h3>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Quick shortcuts</p>
+            <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Fast entry points</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Small shortcut cards for the pages you open every day.
             </p>
           </div>
           <button
             type="button"
             onClick={handleOpenManage}
-            className="hidden h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 md:inline-flex"
+            className="hidden h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 md:inline-flex"
           >
             Manage shortcuts
           </button>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibleShortcuts.map((shortcut) => {
             const Icon = shortcut.icon;
 
@@ -490,26 +490,26 @@ export default function AdminDashboardShortcuts({ moduleAccess = null }) {
                 href={shortcut.href}
                 target={shortcut.newTab ? '_blank' : undefined}
                 rel={shortcut.newTab ? 'noopener noreferrer' : undefined}
-                className="group rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:focus-visible:ring-offset-slate-950"
+                className="group rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:focus-visible:ring-offset-slate-950"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className={cn('inline-flex h-11 w-11 items-center justify-center rounded-2xl border', toneClasses(shortcut.tone))}>
-                    <Icon className="h-5 w-5" />
+                  <div className={cn('inline-flex h-10 w-10 items-center justify-center rounded-xl border', toneClasses(shortcut.tone))}>
+                    <Icon className="h-4 w-4" />
                   </div>
                   <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-700 dark:group-hover:text-slate-200" />
                 </div>
-                <h4 className="mt-4 text-base font-semibold text-slate-950 dark:text-slate-50">{shortcut.title}</h4>
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{shortcut.description}</p>
+                <h4 className="mt-3 text-base font-semibold text-slate-950 dark:text-slate-50">{shortcut.title}</h4>
+                <p className="mt-1.5 text-sm leading-5 text-slate-500 dark:text-slate-400">{shortcut.description}</p>
               </Link>
             );
           })}
         </div>
 
-        <div className="mt-4 flex md:hidden">
+        <div className="mt-3 flex md:hidden">
           <button
             type="button"
             onClick={handleOpenManage}
-            className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Manage shortcuts
           </button>

@@ -10,7 +10,8 @@ import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { clearFieldErrors, getFieldError, normalizeFormError } from '@/lib/form-client';
 import { handleRequest } from '@/lib/handleRequest';
 import { notifyRealtimeUpdate, revalidatePublicData } from '@/lib/realtime';
-import { buttonStyles, cardStyles, fetcher, inputStyles, textareaStyles, withFieldError } from '@/modules/system/admin/settingsShared';
+import { buttonStyles, cardStyles, contentPadStyles, fetcher, inputStyles, textareaStyles, withFieldError } from '@/modules/system/admin/settingsShared';
+import { cn } from '@/lib/utils';
 
 export default function SiteContentSection() {
   const emptyHighlight = { label: '', value: '' };
@@ -144,8 +145,8 @@ export default function SiteContentSection() {
         title="Homepage Content"
         description="Manage hero and about section content for the public homepage."
       />
-      <div className="p-6">
-        <form onSubmit={submit} className="space-y-8">
+      <div className={cn(contentPadStyles, 'min-w-0')}>
+        <form onSubmit={submit} className="space-y-4">
           <FormErrorSummary error={formError} fieldErrors={fieldErrors} />
 
           <div className="space-y-4">
@@ -253,7 +254,7 @@ export default function SiteContentSection() {
                   </button>
                 </div>
                 {about.highlights.map((highlight, index) => (
-                  <div key={`highlight-${index}`} className="grid gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[200px_1fr_auto] dark:border-slate-700">
+                  <div key={`highlight-${index}`} className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 p-3 md:grid-cols-[minmax(0,200px)_minmax(0,1fr)_auto] dark:border-slate-700">
                     <div>
                       <input
                         type="text"

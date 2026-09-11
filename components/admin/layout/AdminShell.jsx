@@ -150,22 +150,20 @@ export default function AdminShell({ children }) {
           )}
         </div>
 
-        <div className="min-w-0 flex-1 p-4 md:p-6">
-          <div className="mx-auto max-w-[1920px] space-y-6">
+        <div className="min-w-0 flex-1 p-3 sm:p-4">
+          <div className="mx-auto max-w-[1920px] space-y-4">
             {isShellLoading ? (
               <AdminTopbarSkeleton />
             ) : (
               <AdminTopbar
                 onLogout={handleLogout}
                 isLoggingOut={isLoggingOut}
-                sidebarCollapsed={sidebarCollapsed}
-                onToggleSidebar={handleToggleSidebar}
                 accountName={accountName}
                 accountImage={accountImage}
                 sections={navigationSections}
               />
             )}
-            <main className="min-w-0 flex-1 space-y-6">{children}</main>
+            <main className="min-w-0 flex-1 space-y-4">{children}</main>
           </div>
         </div>
       </div>

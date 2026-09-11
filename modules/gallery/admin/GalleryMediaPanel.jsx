@@ -503,7 +503,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
   }, [loadingPhotos, pendingPreviewTask, photos, selectedAlbumId]);
 
   return (
-    <div className={embedded ? '' : 'space-y-6'}>
+    <div className={embedded ? '' : 'space-y-4'}>
       <ConfirmModal
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
@@ -657,7 +657,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
 
               {loadingPhotos ? (
                 <div className="px-4 pb-6 sm:px-5 lg:px-6">
-                  <div className="rounded-[26px] border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400">
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400">
                     Loading media...
                   </div>
                 </div>
@@ -768,7 +768,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
             {activeTab === 'details' ? (
               <section className="space-y-4 px-4 py-4 sm:px-5 lg:hidden">
                 {selectedPhoto ? (
-                  <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="mb-4 flex items-center justify-between">
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
@@ -813,7 +813,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
                       </div>
                     </div>
 
-                    <div className="overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40">
                       <div className="aspect-[4/5]">
                           <MediaPreview
                             url={selectedPhoto.imageUrl}
@@ -832,7 +832,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
                       </div>
                     </div>
 
-                    <div className="mt-4 rounded-[22px] border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
                         Quick info
                       </p>

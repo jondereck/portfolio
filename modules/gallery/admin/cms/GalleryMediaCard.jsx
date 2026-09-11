@@ -43,7 +43,7 @@ export default function GalleryMediaCard({
 
   return (
     <article
-      className={`group overflow-hidden rounded-[26px] border text-left transition ${
+      className={`group overflow-hidden rounded-xl border text-left transition ${
         selected
           ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-200 dark:border-blue-400 dark:bg-blue-950/30 dark:ring-blue-900/40'
           : 'border-slate-200 bg-slate-50 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-950/20 dark:hover:border-slate-700 dark:hover:bg-slate-900'

@@ -29,7 +29,7 @@ const emptyState = {
 
 const formId = 'integrations-settings-form';
 
-const sectionStyles = 'rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40 sm:p-5';
+const sectionStyles = 'rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/40 sm:p-4';
 const panelStyles = 'rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 const inputBaseStyles =
   'h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-slate-500 dark:focus:ring-slate-800';
@@ -315,7 +315,7 @@ export default function IntegrationsSettingsSection() {
           </>
         }
       />
-      <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_340px] sm:p-6">
+      <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
         <form id={formId} onSubmit={submit} className="min-w-0 space-y-5">
           <FormErrorSummary error={formError} fieldErrors={fieldErrors} />
 
@@ -473,7 +473,7 @@ export default function IntegrationsSettingsSection() {
           </section>
 
           <section className={sectionStyles}>
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
               <SectionTitle icon={ShieldCheck} title="Scanning tools" description="Run moderation checks across existing gallery media." />
               <div className={panelStyles}>
                 <div className="flex items-start justify-between gap-3">
@@ -522,7 +522,7 @@ export default function IntegrationsSettingsSection() {
             </div>
           </section>
 
-          <details className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+          <details className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900 dark:text-slate-100">Private gallery default view</summary>
             <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
               Choose which layout loads by default before visitors switch views on the gallery page.
@@ -564,7 +564,7 @@ export default function IntegrationsSettingsSection() {
         </form>
 
         <aside className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                 <Sparkles className="h-5 w-5" />

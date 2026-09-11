@@ -229,8 +229,8 @@ export default function AdminAccountClient() {
   };
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="space-y-4">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Account</p>
           <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Manage your login</h2>
@@ -245,7 +245,7 @@ export default function AdminAccountClient() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {loading ? <p className="text-sm text-slate-500">Loading account...</p> : null}
 
         {!loading && account ? (
@@ -336,7 +336,7 @@ export default function AdminAccountClient() {
             </form>
 
             {actorSource === 'neon' ? (
-              <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/40">
+              <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Forgot current password?</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Send a reset code to your email, then set a new Neon password.

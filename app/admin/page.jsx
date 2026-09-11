@@ -8,15 +8,12 @@ export default async function AdminDashboardPage() {
   const moduleAccess = await getEffectiveRoleModuleAccess(actor.user.role);
 
   return (
-    <div className="space-y-6">
-
-
-
+    <div className="space-y-4">
       <AdminDashboardShortcuts moduleAccess={moduleAccess} />
 
-      <section id="future-modules" className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/60">
+      <section id="future-modules" className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
         <h3 className="text-lg font-semibold">Future Modules</h3>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-1.5 text-sm text-slate-500">
           This structure is ready for additional domains such as blog, testimonials, services, and bookings.
         </p>
       </section>

@@ -47,7 +47,7 @@ export default function GallerySelectionActionsPopup({
                   setExpanded(true);
                 }
               }}
-              className="mx-auto flex max-w-md cursor-pointer items-center justify-between gap-3 rounded-[20px] bg-slate-900 p-3 shadow-2xl ring-1 ring-slate-900/10 dark:bg-slate-950 dark:ring-white/10"
+              className="mx-auto flex max-w-md cursor-pointer items-center justify-between gap-3 rounded-xl bg-slate-900 p-3 shadow-2xl ring-1 ring-slate-900/10 dark:bg-slate-950 dark:ring-white/10"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-xs font-bold text-slate-900">
@@ -188,8 +188,8 @@ export default function GallerySelectionActionsPopup({
 
       {/* Desktop */}
       <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 hidden px-6 lg:block">
-        <div className="pointer-events-auto mx-auto flex w-full max-w-5xl items-center gap-4 rounded-[28px] border border-slate-200 bg-white/95 p-3 shadow-2xl ring-1 ring-slate-200 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:ring-slate-800">
-          <div className="flex min-w-[240px] items-center gap-3 rounded-[22px] border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-950/40">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-5xl items-center gap-4 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-2xl ring-1 ring-slate-200 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 dark:ring-slate-800">
+          <div className="flex min-w-[240px] items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-950/40">
             <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-full bg-slate-900 px-2 text-xs font-semibold text-white dark:bg-slate-50 dark:text-slate-900">
               {selectedCount}
             </span>
@@ -203,7 +203,7 @@ export default function GallerySelectionActionsPopup({
             </div>
           </div>
 
-          <div className="min-w-[240px] flex-1 rounded-[22px] border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="min-w-[240px] flex-1 rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
             <label className="mb-1 block px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
               Add to album
             </label>
@@ -218,7 +218,7 @@ export default function GallerySelectionActionsPopup({
             </button>
           </div>
 
-          <div className="min-w-[180px] rounded-[22px] border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
+          <div className="min-w-[180px] rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
             <label className="mb-1 block px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
               Blur mode
             </label>

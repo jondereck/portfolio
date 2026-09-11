@@ -167,7 +167,7 @@ export default function NavigationSettingsSection() {
           </button>
         }
       />
-      <div className="p-6">
+      <div className="min-w-0 p-3 sm:p-4">
         <form onSubmit={submit} className="space-y-4">
           <FormErrorSummary error={formError} fieldErrors={fieldErrors} />
 
@@ -175,7 +175,7 @@ export default function NavigationSettingsSection() {
             {navigation.links.map((link, index) => (
               <div
                 key={`nav-link-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[1.3fr_1.3fr_120px_120px_auto_auto] dark:border-slate-800 dark:bg-slate-950/40"
+                className="grid min-w-0 gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.3fr)_minmax(0,7.5rem)_minmax(0,7.5rem)_auto_auto] dark:border-slate-800 dark:bg-slate-950/40"
               >
                 <div>
                   <input

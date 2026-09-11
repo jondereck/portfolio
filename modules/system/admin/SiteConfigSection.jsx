@@ -126,7 +126,7 @@ function MinimalistEditorialPreview() {
             <div className="h-1.5 w-7 rounded-full bg-slate-200" />
           </div>
         </div>
-        <div className="flex w-[42%] items-end justify-center bg-[#f1eee8] px-3 pt-3">
+        <div className="flex w-full max-w-[42%] shrink items-end justify-center bg-[#f1eee8] px-3 pt-3">
           <div className="h-[82px] w-[62px] rounded-t-[36px] bg-[radial-gradient(circle_at_50%_28%,#fafafa_0,#ece9e1_38%,#cbc5ba_100%)]" />
         </div>
       </div>
@@ -394,11 +394,11 @@ export function SiteBrandingSection() {
 
   return (
     <section className={`${cardStyles} overflow-hidden`}>
-      <form onSubmit={submit} className="space-y-6 p-6 md:p-7">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-[30px] font-semibold tracking-[-0.03em] text-slate-900">Branding</h2>
-            <p className="mt-1 text-sm text-slate-500">
+      <form onSubmit={submit} className="space-y-4 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Branding</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
               Manage the public portfolio logo text and image used across the site.
             </p>
           </div>
@@ -655,11 +655,11 @@ export default function SiteConfigSection() {
 
   return (
     <section className={`${cardStyles} overflow-hidden`}>
-      <form onSubmit={submit} className="space-y-6 p-6 md:p-7">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-[30px] font-semibold tracking-[-0.03em] text-slate-900">Portfolio Theme</h2>
-            <p className="mt-1 text-sm text-slate-500">
+      <form onSubmit={submit} className="space-y-4 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">Portfolio Theme</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
               Choose how your public portfolio theme is displayed without changing your content.
             </p>
           </div>
@@ -686,7 +686,7 @@ export default function SiteConfigSection() {
 
         <FormErrorSummary error={formError} fieldErrors={fieldErrors} />
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-2 sm:inline-flex sm:flex-row">
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-2 sm:inline-flex sm:flex-row">
           <label
             className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
               !isRandomMode ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-500'
@@ -717,9 +717,9 @@ export default function SiteConfigSection() {
           </label>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[312px_minmax(0,1fr)]">
-          <aside className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
+          <aside className="min-w-0 space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">Rotation Settings</h3>
@@ -804,7 +804,7 @@ export default function SiteConfigSection() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <h3 className="text-sm font-semibold text-slate-900">Current Status</h3>
               <div className="mt-3 divide-y divide-slate-100">
                 <StatusRow icon={Monitor} label="Current public theme" value={getThemeTitle(currentThemeId || 'N/A')} />
@@ -836,7 +836,7 @@ export default function SiteConfigSection() {
             </div>
           </aside>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-slate-900">Theme Library</h3>
               <p className="mt-1 text-sm text-slate-500">
@@ -853,7 +853,7 @@ export default function SiteConfigSection() {
                 return (
                   <article
                     key={theme.value}
-                    className={`rounded-2xl border p-4 transition ${
+                    className={`rounded-xl border p-4 transition ${
                       selected || isCurrent
                         ? 'border-blue-400 bg-blue-50/50 shadow-[0_0_0_1px_rgba(96,165,250,0.15)]'
                         : 'border-slate-200 bg-white hover:border-slate-300'

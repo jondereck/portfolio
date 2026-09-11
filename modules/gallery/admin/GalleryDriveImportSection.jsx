@@ -210,7 +210,7 @@ export default function GalleryDriveImportSection({ controller, selectedAlbum, v
   return (
     <div className="space-y-4">
       {variant === 'compact' ? (
-        <div className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex items-start gap-3">
             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">
               <FolderOpen className="h-5 w-5" />
@@ -348,8 +348,8 @@ export default function GalleryDriveImportSection({ controller, selectedAlbum, v
       ) : null}
 
       {variant === 'compact' ? null : (
-        <div className="space-y-4 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-5">
-          <section className={`overflow-hidden rounded-[1.75rem] border p-4 shadow-sm sm:p-5 ${driveConnection.connected ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30' : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30'}`}>
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-4">
+          <section className={`overflow-hidden rounded-xl border p-4 shadow-sm sm:p-4 ${driveConnection.connected ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/30' : 'border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30'}`}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 items-start gap-3">
                 <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${driveConnection.connected ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'}`}>
@@ -402,7 +402,7 @@ export default function GalleryDriveImportSection({ controller, selectedAlbum, v
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-5">
+          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Drive source folder</p>

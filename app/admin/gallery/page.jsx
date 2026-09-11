@@ -1,7 +1,6 @@
 import {
   ArrowUpDown,
   FolderOpen,
-  Globe,
   Images,
   LayoutDashboard,
 } from 'lucide-react';
@@ -12,6 +11,14 @@ import { buildGalleryRouteHref } from '@/modules/gallery/admin/workspaceConfig';
 import { galleryService } from '@/src/modules/gallery/services/galleryService';
 
 const galleryOverviewCards = [
+  {
+    title: 'Advanced Gallery Workspace',
+    description: 'Open the integrated all-in-one gallery workspace for power workflows.',
+    href: buildGalleryRouteHref('workspace'),
+    icon: LayoutDashboard,
+    badge: 'Workspace',
+    accent: 'slate',
+  },
   {
     title: 'Manage Albums',
     description: 'Open the album management page to create, select, publish, and remove albums.',
@@ -36,15 +43,6 @@ const galleryOverviewCards = [
     badge: 'Order',
     accent: 'amber',
   },
-  {
-    title: 'Advanced Gallery Workspace',
-    description: 'Open the integrated all-in-one gallery workspace for power workflows.',
-    href: buildGalleryRouteHref('workspace'),
-    icon: LayoutDashboard,
-    badge: 'Workspace',
-    accent: 'slate',
-  },
-  
 ];
 
 function formatAlbumHint(totalAlbums) {
@@ -64,10 +62,8 @@ export default async function GalleryAdminPage() {
   const draftAlbums = Math.max(totalAlbums - publishedAlbums, 0);
 
   return (
-    <div className="space-y-6">
-
-
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <div className="space-y-4">
+      <section className="grid grid-cols-3 gap-2 sm:gap-3">
         <AdminMetricCard
           label="Albums"
           value={totalAlbums}
@@ -85,7 +81,7 @@ export default async function GalleryAdminPage() {
         />
       </section>
 
-      <section className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid auto-rows-fr grid-cols-2 gap-3 xl:grid-cols-3">
         {galleryOverviewCards.map((card) => (
           <AdminOverviewCard key={card.title} className="h-full" {...card} />
         ))}

@@ -139,7 +139,7 @@ export function GalleryPageHeader({ eyebrow, title, description, actions }) {
 
 export function GalleryEmptyState({ title, description, action }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center dark:border-slate-700 dark:bg-slate-900/60 sm:p-8">
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center dark:border-slate-700 dark:bg-slate-900/60 sm:p-6">
       <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</p>
       <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{description}</p>
       {action ? <div className="mt-4 flex justify-center">{action}</div> : null}

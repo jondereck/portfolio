@@ -104,7 +104,7 @@ export default function GalleryMediaFilterModal({
                     key={option.id}
                     type="button"
                     onClick={() => setPendingFilter(option.id)}
-                    className={`w-full rounded-[22px] border px-4 py-3 text-left transition ${
+                    className={`w-full rounded-xl border px-4 py-3 text-left transition ${
                       isSelected
                         ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900'
                         : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900/60'
@@ -140,7 +140,7 @@ export default function GalleryMediaFilterModal({
                   key={option.id}
                   type="button"
                   onClick={() => setPendingSort(option.id)}
-                  className={`w-full rounded-[22px] border px-4 py-3 text-left transition ${
+                  className={`w-full rounded-xl border px-4 py-3 text-left transition ${
                     isSelected
                       ? 'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900'
                       : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900/60'
@@ -193,7 +193,7 @@ export default function GalleryMediaFilterModal({
           </div>
         ) : null}
 
-        <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-300">
           <p className="font-semibold text-slate-700 dark:text-slate-200">Selected</p>
           <p className="mt-1">
             {[showFilters ? activeFilterOption?.title : null, activeSortOption?.title, showDensity ? activeDensityOption?.title : null]

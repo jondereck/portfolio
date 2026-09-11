@@ -35,12 +35,12 @@ export default function GalleryUploadDropzone({
   const isPrimary = buttonTone === 'primary';
 
   const baseButtonClassName = isPrimary
-    ? 'inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200'
+    ? 'inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200'
     : 'inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto';
 
   return (
     <div
-      className={`rounded-2xl border border-dashed p-3 transition sm:p-5 ${
+      className={`rounded-xl border border-dashed p-3 transition sm:p-4 ${
         isDragging
           ? 'border-sky-400 bg-sky-50 dark:border-sky-500/60 dark:bg-sky-950/20'
           : 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/30'

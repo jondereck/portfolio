@@ -37,7 +37,7 @@ export default function GalleryCmsModal({ open, onClose, onOpenChange, title, de
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-3 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="w-full overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
+              <Dialog.Panel className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900">
                 <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
                   <Dialog.Title className="text-base font-semibold text-slate-900 dark:text-slate-50">{title}</Dialog.Title>
                   {description ? (

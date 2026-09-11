@@ -88,7 +88,7 @@ const RefreshIcon = createIcon(
 
 function SectionCard({ title, subtitle, icon: Icon, children }) {
   return (
-    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
       <div className="mb-5 flex items-start gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200">
           <Icon className="h-5 w-5" />
@@ -529,7 +529,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
               </section>
             ) : (
               <section
-                className={`space-y-6 px-4 py-4 pb-24 sm:px-5 lg:block lg:px-6 lg:py-5 lg:pb-5 ${activeTab !== 'manage' ? 'hidden lg:block' : ''}`}
+                className={`space-y-4 px-3 py-3 pb-24 sm:px-4 lg:block lg:px-4 lg:py-4 lg:pb-4 ${activeTab !== 'manage' ? 'hidden lg:block' : ''}`}
               >
                 <GalleryPanelCard
                   title={selectedAlbum ? `Manage ${selectedAlbum.name}` : 'Current album'}

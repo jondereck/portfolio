@@ -139,7 +139,7 @@ export default function RoleModuleAccessMatrix() {
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Access Control</p>
@@ -183,7 +183,7 @@ export default function RoleModuleAccessMatrix() {
       {loading ? (
         <p className="mt-5 text-sm text-slate-500">Loading role access...</p>
       ) : (
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-4 min-w-0 overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
             <thead>
               <tr className="text-slate-500 dark:text-slate-400">
