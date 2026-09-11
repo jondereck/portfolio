@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Fragment } from 'react';
+import { getAvatarInitials } from '@/lib/auth/avatar-display';
 
 const iconMap = {
   layoutDashboard: LayoutDashboard,
@@ -51,7 +52,7 @@ export default function CollapsibleSidebar({
 }) {
   const resolvedAccountName = String(accountName || '').trim();
   const resolvedAccountImage = String(accountImage || '').trim();
-  const accountInitial = resolvedAccountName.slice(0, 1).toUpperCase();
+  const accountInitial = getAvatarInitials(resolvedAccountName);
 
   return (
     <aside

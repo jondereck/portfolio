@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { writeAuditEvent } from '@/lib/audit/audit';
+import { persistUserAvatarProfile, resolveGoogleMatchedProfile } from '@/lib/auth/avatar';
 import { hashPassword, verifyPassword } from '@/lib/password/password';
-import { getGoogleProfileForUser } from '@/lib/auth/google-drive';
 
 export async function getSelfAccount(userId: string) {
   const user = await prisma.user.findUnique({
@@ -21,38 +21,35 @@ export async function getSelfAccount(userId: string) {
     throw new Error('USER_NOT_FOUND');
   }
 
-  const normalizedUserEmail = String(user.email || '').trim().toLowerCase();
-  let image = user.image ?? '';
-  try {
-    const googleProfile = await getGoogleProfileForUser(user.id);
-    const normalizedGoogleEmail = String(googleProfile?.email || '').trim().toLowerCase();
-    const googleEmailMatchesUser = Boolean(normalizedGoogleEmail) && normalizedGoogleEmail === normalizedUserEmail;
+  let image = typeof user.image === 'string' && /^https:\/\//i.test(user.image) ? user.image : '';
+  let name = user.name ?? '';
 
-    if (googleEmailMatchesUser && googleProfile?.picture) {
-      if (image !== googleProfile.picture) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { image: googleProfile.picture },
-        });
-      }
-      image = googleProfile.picture;
-    } else if (user.role === 'super_admin' && normalizedGoogleEmail && !googleEmailMatchesUser) {
-      // Super admin avatar must never come from a mismatched Google account.
-      if (image) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { image: null },
-        });
-      }
-      image = '';
+  try {
+    const resolved = await resolveGoogleMatchedProfile({
+      email: user.email,
+      localImage: user.image,
+      localName: user.name,
+    });
+    image = resolved.image || image;
+    name = resolved.name || name;
+
+    const shouldPersistImage = Boolean(image && image !== (user.image ?? ''));
+    const shouldPersistName = Boolean(name && name !== (user.name ?? ''));
+    if (shouldPersistImage || shouldPersistName) {
+      const persisted = await persistUserAvatarProfile(user.id, {
+        image: shouldPersistImage ? image : undefined,
+        name: shouldPersistName ? name : undefined,
+      });
+      image = persisted.image || image;
+      name = persisted.name || name;
     }
   } catch {
-    if (!image) image = '';
+    // keep local values
   }
 
   return {
     id: user.id,
-    name: user.name ?? '',
+    name,
     email: user.email,
     image,
     role: user.role,

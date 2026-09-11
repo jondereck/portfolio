@@ -1,6 +1,7 @@
 import type { Profile, UserRole } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { writeAuditEvent } from '@/lib/audit/audit';
+import { syncPasswordToNeonAuth } from '@/lib/auth/neon-password-sync';
 import { ensureUserProfile } from '@/lib/auth/user-profiles';
 import { hashPassword } from '@/lib/password/password';
 import {
@@ -215,6 +216,9 @@ export async function createManagedUser(input: {
   });
 
   const profile = await ensureUserProfile(prisma, user.id, name, name || email.split('@')[0] || email);
+
+  // If this email already exists in Neon Auth (e.g. Google signup), keep credential password synced.
+  await syncPasswordToNeonAuth(email, password);
 
   await writeAuditEvent({
     actorUserId: input.actorUserId,
@@ -460,6 +464,10 @@ export async function resetManagedUserPassword(input: {
     },
   });
 
+  // Admin login uses Neon Auth email/password, not the local NextAuth hash.
+  // Keep neon_auth.account.credential in sync so email sign-in works immediately.
+  const neonSync = await syncPasswordToNeonAuth(updated.email, input.password);
+
   await prisma.session.deleteMany({
     where: { userId: user.id },
   });
@@ -470,7 +478,11 @@ export async function resetManagedUserPassword(input: {
     action: 'user_password_reset',
     targetType: 'user',
     targetId: updated.id,
-    metadata: { email: updated.email },
+    metadata: {
+      email: updated.email,
+      neonPasswordSynced: neonSync.synced,
+      neonPasswordSyncReason: neonSync.synced ? undefined : neonSync.reason,
+    },
   });
 
   return mapManagedUser(updated);

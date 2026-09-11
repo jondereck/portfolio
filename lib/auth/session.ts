@@ -41,7 +41,8 @@ async function getResolvedNeonLocalUser() {
       return null;
     }
 
-    throw error;
+    console.error('[auth] Failed to resolve Neon local user', error);
+    return null;
   }
 }
 
@@ -81,7 +82,16 @@ export async function getCurrentAuthStatus(request?: Request) {
         };
       }
 
-      throw error;
+      // Transient Neon/Prisma pool issues should not hard-crash login redirects.
+      console.error('[auth] Failed to sync Neon session to local user', error);
+      return {
+        authenticated: false,
+        errorCode: 'NEON_SYNC_FAILED',
+        neonConfigured: true,
+        source: 'neon' as const,
+        state: 'error' as const,
+        user: null,
+      };
     }
   }
 

@@ -8,6 +8,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { LogOut, User, X } from 'lucide-react';
 import AdminBreadcrumbs from '@/components/admin/layout/AdminBreadcrumbs';
 import { adminNavigationSections } from '@/components/admin/navigation/admin-nav-config';
+import { getAvatarInitials } from '@/lib/auth/avatar-display';
 
 const pageTitles = {
   '/admin': 'Admin Dashboard',
@@ -63,7 +64,7 @@ export default function AdminTopbar({
   const title = useMemo(() => pageTitles[pathname] ?? 'Admin Control Center', [pathname]);
   const canGoBack = useMemo(() => pathname !== '/admin' && pathname !== '/admin/login', [pathname]);
   const resolvedAccountName = String(accountName || '').trim();
-  const accountInitial = resolvedAccountName.slice(0, 1).toUpperCase();
+  const accountInitial = getAvatarInitials(resolvedAccountName);
 
   const isActivePath = (href) => {
     if (href.includes('#')) {

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import AdminSidebar from '@/components/admin/navigation/AdminSidebar';
+import AdminSidebarSkeleton from '@/components/admin/layout/AdminSidebarSkeleton';
 import AdminTopbar from '@/components/admin/layout/AdminTopbar';
+import { AdminTopbarSkeleton } from '@/components/admin/layout/admin-skeletons';
 import { adminNavigationSections, filterAdminNavigationSections } from '@/components/admin/navigation/admin-nav-config';
 import { useLoadingStore } from '@/store/loading';
 import UnclothyTaskNotifier from '@/components/admin/layout/UnclothyTaskNotifier';
@@ -24,6 +26,7 @@ export default function AdminShell({ children }) {
   const [accountName, setAccountName] = useState('');
   const [accountImage, setAccountImage] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isShellLoading = moduleAccess === null;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -58,7 +61,8 @@ export default function AdminShell({ children }) {
 
         const payload = await response.json().catch(() => ({}));
         const account = payload?.account ?? null;
-        const nextModuleAccess = payload?.moduleAccess && typeof payload.moduleAccess === 'object' ? payload.moduleAccess : {};
+        const nextModuleAccess =
+          payload?.moduleAccess && typeof payload.moduleAccess === 'object' ? payload.moduleAccess : {};
         const resolvedName = String(account?.name || account?.email || '').trim();
         const resolvedImage = String(account?.image || '').trim();
 
@@ -79,7 +83,10 @@ export default function AdminShell({ children }) {
         } catch {
           // ignore persistence errors
         }
-      } catch {
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          return;
+        }
         // ignore account refresh errors and keep the last known label
         setModuleAccess({});
       }
@@ -128,28 +135,36 @@ export default function AdminShell({ children }) {
       <UnclothyTaskNotifier />
       <div className="flex min-h-screen items-stretch">
         <div className="sticky top-0 hidden h-screen self-stretch lg:block">
-          <AdminSidebar
-            collapsed={sidebarCollapsed}
-            onToggle={handleToggleSidebar}
-            onLogout={handleLogout}
-            isLoggingOut={isLoggingOut}
-            accountName={accountName}
-            accountImage={accountImage}
-            sections={navigationSections}
-          />
-        </div>
-
-        <div className="min-w-0 flex-1 p-4 md:p-6">
-          <div className="mx-auto max-w-[1920px] space-y-6">
-            <AdminTopbar
+          {isShellLoading ? (
+            <AdminSidebarSkeleton collapsed={sidebarCollapsed} />
+          ) : (
+            <AdminSidebar
+              collapsed={sidebarCollapsed}
+              onToggle={handleToggleSidebar}
               onLogout={handleLogout}
               isLoggingOut={isLoggingOut}
-              sidebarCollapsed={sidebarCollapsed}
-              onToggleSidebar={handleToggleSidebar}
               accountName={accountName}
               accountImage={accountImage}
               sections={navigationSections}
             />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1 p-4 md:p-6">
+          <div className="mx-auto max-w-[1920px] space-y-6">
+            {isShellLoading ? (
+              <AdminTopbarSkeleton />
+            ) : (
+              <AdminTopbar
+                onLogout={handleLogout}
+                isLoggingOut={isLoggingOut}
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={handleToggleSidebar}
+                accountName={accountName}
+                accountImage={accountImage}
+                sections={navigationSections}
+              />
+            )}
             <main className="min-w-0 flex-1 space-y-6">{children}</main>
           </div>
         </div>
