@@ -480,7 +480,7 @@ export default function AdminDashboardShortcuts({ moduleAccess = null }) {
           </button>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-3">
           {visibleShortcuts.map((shortcut) => {
             const Icon = shortcut.icon;
 
@@ -492,14 +492,14 @@ export default function AdminDashboardShortcuts({ moduleAccess = null }) {
                 rel={shortcut.newTab ? 'noopener noreferrer' : undefined}
                 className="group rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 dark:border-slate-800 dark:bg-slate-950/30 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:focus-visible:ring-offset-slate-950"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className={cn('inline-flex h-10 w-10 items-center justify-center rounded-xl border', toneClasses(shortcut.tone))}>
+                <div className="flex items-start justify-between gap-2 sm:gap-3">
+                  <div className={cn('inline-flex h-9 w-9 items-center justify-center rounded-xl border sm:h-10 sm:w-10', toneClasses(shortcut.tone))}>
                     <Icon className="h-4 w-4" />
                   </div>
-                  <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-700 dark:group-hover:text-slate-200" />
+                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-700 dark:group-hover:text-slate-200" />
                 </div>
-                <h4 className="mt-3 text-base font-semibold text-slate-950 dark:text-slate-50">{shortcut.title}</h4>
-                <p className="mt-1.5 text-sm leading-5 text-slate-500 dark:text-slate-400">{shortcut.description}</p>
+                <h4 className="mt-3 text-sm font-semibold text-slate-950 dark:text-slate-50 sm:text-base">{shortcut.title}</h4>
+                <p className="mt-1.5 hidden text-sm leading-5 text-slate-500 dark:text-slate-400 sm:block">{shortcut.description}</p>
               </Link>
             );
           })}

@@ -279,7 +279,7 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
                 <GalleryPanelCard
                   title={`Arrange ${selectedAlbum.name}`}
                   description=""
-                  className={`relative overflow-visible ${showSelectionBar ? 'pb-32 lg:pb-28' : 'pb-24 lg:pb-0'}`}
+                  className={`relative overflow-visible ${showSelectionBar ? 'pb-44 lg:pb-28' : 'pb-40 lg:pb-0'}`}
                 >
                   {!isDragging ? (
                     <div className="hidden rounded-xl border border-slate-200 bg-white/95 p-3 dark:border-slate-700 dark:bg-slate-900/95 md:block">

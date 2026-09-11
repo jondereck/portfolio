@@ -89,37 +89,44 @@ export default function AdminTopbar({
 
   return (
     <>
-      <header className={topbarStyles}>
-        <div className="md:hidden">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1.5">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Control Center</p>
-              <h1 className="text-xl font-bold leading-tight text-slate-900 dark:text-slate-100">{title}</h1>
-              {showBreadcrumbs ? (
-                <div className="pt-0.5">
-                  <AdminBreadcrumbs />
-                </div>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen(true)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full transition hover:opacity-90"
-              aria-label="Open admin menu"
-              title="Open admin menu"
-            >
-              <AccountAvatar accountImage={accountImage} accountInitial={accountInitial} />
-            </button>
-          </div>
-        </div>
-
-        <div className="hidden md:flex md:flex-row md:items-start md:justify-between">
+      {/* Desktop: stays at top */}
+      <header className={cn(topbarStyles, 'hidden md:block')}>
+        <div className="flex flex-row items-start justify-between">
           <div className="min-w-0 space-y-1">
             <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Control Center</p>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 lg:text-2xl">{title}</h1>
             <AdminBreadcrumbs />
           </div>
+        </div>
+      </header>
+
+      {/* Mobile: bottom bar for one-hand access */}
+      <header
+        className={cn(
+          topbarStyles,
+          'fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 shadow-lg md:hidden',
+        )}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Control Center</p>
+            <h1 className="truncate text-base font-bold leading-tight text-slate-900 dark:text-slate-100">{title}</h1>
+            {showBreadcrumbs ? (
+              <div className="pt-0.5">
+                <AdminBreadcrumbs />
+              </div>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(true)}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition hover:opacity-90"
+            aria-label="Open admin menu"
+            title="Open admin menu"
+          >
+            <AccountAvatar accountImage={accountImage} accountInitial={accountInitial} />
+          </button>
         </div>
       </header>
 

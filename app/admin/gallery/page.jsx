@@ -63,7 +63,7 @@ export default async function GalleryAdminPage() {
 
   return (
     <div className="space-y-4">
-      <section className="grid grid-cols-3 gap-2 sm:gap-3">
+      <section className="grid grid-cols-3 gap-3">
         <AdminMetricCard
           label="Albums"
           value={totalAlbums}

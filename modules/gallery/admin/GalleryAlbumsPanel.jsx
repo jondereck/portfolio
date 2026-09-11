@@ -529,7 +529,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
               </section>
             ) : (
               <section
-                className={`space-y-4 px-3 py-3 pb-24 sm:px-4 lg:block lg:px-4 lg:py-4 lg:pb-4 ${activeTab !== 'manage' ? 'hidden lg:block' : ''}`}
+                className={`space-y-4 px-3 py-3 pb-40 sm:px-4 lg:block lg:px-4 lg:py-4 lg:pb-4 ${activeTab !== 'manage' ? 'hidden lg:block' : ''}`}
               >
                 <GalleryPanelCard
                   title={selectedAlbum ? `Manage ${selectedAlbum.name}` : 'Current album'}

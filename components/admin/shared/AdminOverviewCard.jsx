@@ -91,7 +91,7 @@ export default function AdminOverviewCard({
             {badge ? (
               <span
                 className={cn(
-                  'inline-flex max-w-[48%] items-center truncate rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] sm:max-w-none sm:px-2.5 sm:py-1 sm:text-[11px]',
+                  'hidden items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] md:inline-flex',
                   styles.badge,
                 )}
               >

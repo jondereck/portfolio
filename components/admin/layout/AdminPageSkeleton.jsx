@@ -69,7 +69,7 @@ export default function AdminPageSkeleton() {
   if (pathname === '/admin/gallery') {
     return (
       <div className={pageStackStyles} aria-busy="true" aria-label="Loading gallery administration">
-        <section className="grid grid-cols-3 gap-2 sm:gap-3">
+        <section className="grid grid-cols-3 gap-3">
           {Array.from({ length: GALLERY_METRIC_COUNT }).map((_, index) => (
             <AdminMetricCardSkeleton key={`metric-skel-${index}`} />
           ))}
