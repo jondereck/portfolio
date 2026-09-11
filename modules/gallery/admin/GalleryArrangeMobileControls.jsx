@@ -21,7 +21,7 @@ export default function GalleryArrangeMobileControls({
 
   return (
     <>
-      <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-20 mt-4 md:hidden">
+      <div className="sticky bottom-3 z-20 mt-4 md:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-lg shadow-slate-950/10 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
           <button
             type="button"

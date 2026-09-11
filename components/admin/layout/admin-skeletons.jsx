@@ -37,35 +37,16 @@ export function AdminOverviewCardSkeleton({ className }) {
 /** Exact geometry of AdminTopbar header */
 export function AdminTopbarSkeleton() {
   return (
-    <>
-      <header className={cn(topbarStyles, 'hidden md:block')} aria-busy="true" aria-label="Loading page header">
-        <div className="flex flex-row items-start justify-between">
-          <div className="space-y-1">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="mt-1 h-7 w-64 max-w-[40vw]" />
-            <Skeleton className="mt-1 h-3 w-40" />
-          </div>
+    <header className={topbarStyles} aria-busy="true" aria-label="Loading page header">
+      <div className="flex items-center justify-between gap-3 md:items-start">
+        <div className="min-w-0 space-y-1">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="mt-1 h-5 w-40 max-w-[55vw] md:h-7 md:w-64" />
+          <Skeleton className="mt-1 hidden h-3 w-40 md:block" />
         </div>
-      </header>
-
-      <header
-        className={cn(
-          topbarStyles,
-          'fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 shadow-lg md:hidden',
-        )}
-        aria-busy="true"
-        aria-label="Loading page header"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 space-y-1.5">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-5 w-40 max-w-[55vw]" />
-            <Skeleton className="h-3 w-28" />
-          </div>
-          <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
-        </div>
-      </header>
-    </>
+        <Skeleton className="h-11 w-11 shrink-0 rounded-full md:hidden" />
+      </div>
+    </header>
   );
 }
 

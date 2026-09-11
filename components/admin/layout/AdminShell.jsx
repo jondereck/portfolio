@@ -150,7 +150,7 @@ export default function AdminShell({ children }) {
           )}
         </div>
 
-        <div className="min-w-0 flex-1 p-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-4 md:pb-4">
+        <div className="min-w-0 flex-1 p-3 sm:p-4">
           <div className="mx-auto max-w-[1920px] space-y-4">
             {isShellLoading ? (
               <AdminTopbarSkeleton />
