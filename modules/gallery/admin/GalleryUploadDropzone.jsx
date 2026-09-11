@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import { CloudUpload, FolderInput } from 'lucide-react';
 import GalleryBatchResultSummary from './GalleryBatchResultSummary';
-import GalleryBatchProgressCard from './GalleryBatchProgressCard';
 
 export default function GalleryUploadDropzone({
   title = 'Upload files',
@@ -13,7 +12,6 @@ export default function GalleryUploadDropzone({
   buttonTone = 'outline',
   buttonClassName = '',
   uploading = false,
-  uploadProgress = null,
   uploadSummary = null,
   onUploadFiles,
 }) {
@@ -85,19 +83,10 @@ export default function GalleryUploadDropzone({
               ? `Last batch: ${uploadSummary.uploadedCount} uploaded · ${uploadSummary.skippedCount} skipped · ${uploadSummary.failedCount} failed`
               : 'Drop files anywhere in this box.'}
           </p>
-        ) : null}
+        ) : (
+          <p className="text-xs font-medium text-sky-700 dark:text-sky-300">Upload in progress…</p>
+        )}
       </div>
-
-      {uploading && uploadProgress ? (
-        <GalleryBatchProgressCard
-          progress={uploadProgress}
-          heading="Upload in progress"
-          currentItemFallback="Uploading file"
-          currentItemTitle={uploadProgress.currentFileName || 'Uploading file'}
-          itemUnit="file"
-          className="mt-4"
-        />
-      ) : null}
 
       {hasSummary ? (
         <GalleryBatchResultSummary summary={uploadSummary} className="mt-4" />

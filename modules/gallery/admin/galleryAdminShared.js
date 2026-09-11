@@ -83,13 +83,28 @@ export async function fetchJson(url, init) {
   return data;
 }
 
-export function uploadFormDataWithProgress(url, formData, { method = 'POST', onProgress } = {}) {
+export function uploadFormDataWithProgress(url, formData, { method = 'POST', onProgress, signal } = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
     xhr.open(method, url);
     xhr.responseType = 'json';
     xhr.withCredentials = true;
+
+    const abortError = () => Object.assign(new Error('Upload cancelled.'), { name: 'AbortError' });
+
+    const onAbort = () => {
+      xhr.abort();
+      reject(abortError());
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable || typeof onProgress !== 'function') {
@@ -104,6 +119,7 @@ export function uploadFormDataWithProgress(url, formData, { method = 'POST', onP
     };
 
     xhr.onload = () => {
+      signal?.removeEventListener('abort', onAbort);
       const data = xhr.response ?? {};
 
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -115,7 +131,13 @@ export function uploadFormDataWithProgress(url, formData, { method = 'POST', onP
     };
 
     xhr.onerror = () => {
+      signal?.removeEventListener('abort', onAbort);
       reject(toRequestError({}, 'Network request failed'));
+    };
+
+    xhr.onabort = () => {
+      signal?.removeEventListener('abort', onAbort);
+      reject(abortError());
     };
 
     xhr.send(formData);

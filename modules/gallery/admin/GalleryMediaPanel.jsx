@@ -10,6 +10,7 @@ import GalleryDriveImportSection from './GalleryDriveImportSection';
 import GalleryMediaViewer from './GalleryMediaViewer';
 import GalleryUnclothyTasksPanel from './GalleryUnclothyTasksPanel';
 import GalleryUploadDropzone from './GalleryUploadDropzone';
+import GalleryBatchProgressModal from './GalleryBatchProgressModal';
 import { fetchJson, GalleryEmptyState } from './galleryAdminShared';
 import {
   GalleryAlbumMovePicker,
@@ -78,6 +79,10 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     uploadingFiles,
     uploadProgress,
     uploadSummary,
+    importingDrive,
+    importProgress,
+    cancelDriveImport,
+    cancelUpload,
     savingAlbum,
     uploadFiles,
     createAlbumRecord,
@@ -751,7 +756,6 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
               <section className="space-y-4 px-4 py-4 sm:px-5 lg:hidden">
                 <GalleryUploadDropzone
                   uploading={uploadingFiles}
-                  uploadProgress={uploadProgress}
                   uploadSummary={uploadSummary}
                   onUploadFiles={uploadFiles}
                   title="Upload media"
@@ -940,7 +944,6 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       >
         <GalleryUploadDropzone
           uploading={uploadingFiles}
-          uploadProgress={uploadProgress}
           uploadSummary={uploadSummary}
           onUploadFiles={uploadFiles}
           title="Upload media"
@@ -1083,6 +1086,25 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
         openGenerate={previewOpenGenerate}
         onGenerateOpened={() => setPreviewOpenGenerate(false)}
         blurUnclothyGenerated={blurUnclothyGenerated}
+      />
+
+      <GalleryBatchProgressModal
+        open={Boolean((uploadingFiles && uploadProgress) || (importingDrive && importProgress))}
+        progress={uploadingFiles && uploadProgress ? uploadProgress : importProgress}
+        heading={uploadingFiles && uploadProgress ? 'Upload in progress' : 'Google Drive import in progress'}
+        currentItemFallback={
+          uploadingFiles && uploadProgress ? 'Uploading file' : 'Importing Google Drive folder'
+        }
+        currentItemTitle={
+          uploadingFiles && uploadProgress
+            ? uploadProgress?.currentFileName || 'Uploading file'
+            : importProgress?.currentFileName || 'Importing Google Drive folder'
+        }
+        itemUnit={uploadingFiles && uploadProgress ? 'file' : 'item'}
+        uploadedLabel={uploadingFiles && uploadProgress ? 'Uploaded' : 'Imported'}
+        skippedLabel="Skipped"
+        failedLabel="Failed"
+        onCancel={uploadingFiles && uploadProgress ? cancelUpload : cancelDriveImport}
       />
     </div>
   );

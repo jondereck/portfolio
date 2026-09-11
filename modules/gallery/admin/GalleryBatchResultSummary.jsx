@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { AlertTriangle, Check, X } from 'lucide-react';
 
 const truncateText = (text, max = 80) => {
@@ -27,11 +28,16 @@ export default function GalleryBatchResultSummary({
   skippedLabel = 'Duplicates',
   failedLabel = 'Failed',
   flaggedHeading = 'Skipped and failed files',
+  initialVisibleCount = 5,
   className = '',
 }) {
+  const [expanded, setExpanded] = useState(false);
   const hasSummary = summary && Number(summary.totalFiles) > 0;
   const resultEntries = Array.isArray(summary?.results) ? summary.results : [];
   const flaggedEntries = resultEntries.filter((entry) => entry.status !== 'success');
+  const hiddenCount = Math.max(0, flaggedEntries.length - initialVisibleCount);
+  const visibleFlagged =
+    expanded || hiddenCount === 0 ? flaggedEntries : flaggedEntries.slice(0, initialVisibleCount);
 
   if (!hasSummary) {
     return null;
@@ -80,7 +86,7 @@ export default function GalleryBatchResultSummary({
           </p>
 
           <div className="space-y-2">
-            {flaggedEntries.map((entry, index) => (
+            {visibleFlagged.map((entry, index) => (
               <div
                 key={`${entry.fileName}-${entry.status}-${index}`}
                 className={`min-w-0 overflow-hidden rounded-lg border px-2.5 py-2.5 text-sm sm:rounded-xl sm:px-3 sm:py-3 ${
@@ -107,6 +113,16 @@ export default function GalleryBatchResultSummary({
               </div>
             ))}
           </div>
+
+          {hiddenCount > 0 ? (
+            <button
+              type="button"
+              className="mt-2 text-xs font-bold text-slate-700 underline-offset-2 hover:underline dark:text-slate-200"
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? 'Show less' : `Show more (${hiddenCount})`}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

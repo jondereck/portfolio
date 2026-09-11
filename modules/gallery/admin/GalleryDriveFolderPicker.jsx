@@ -15,12 +15,12 @@ import {
   Play,
   RefreshCw,
   Search,
-  Shield,
   Upload,
   X,
 } from 'lucide-react';
-import { fetchJson, buttonStyles } from './galleryAdminShared';
 import { FaGoogleDrive } from 'react-icons/fa';
+import AdminHint from '@/components/admin/shared/AdminHint';
+import { fetchJson } from './galleryAdminShared';
 
 const emptyBrowseState = {
   loading: false,
@@ -33,16 +33,6 @@ const emptyBrowseState = {
   error: '',
 };
 
-function GoogleDriveLogo() {
-  return (
-    <div className="relative h-8 w-8 shrink-0" aria-hidden="true">
-      <div className="absolute left-[9px] top-0 h-[18px] w-[10px] -rotate-[30deg] rounded-sm bg-emerald-500" />
-      <div className="absolute right-[1px] top-[12px] h-[11px] w-[18px] rounded-sm bg-amber-400" />
-      <div className="absolute bottom-[1px] left-[1px] h-[11px] w-[18px] rounded-sm bg-blue-500" />
-    </div>
-  );
-}
-
 export default function GalleryDriveFolderPicker({
   open,
   onClose,
@@ -54,7 +44,7 @@ export default function GalleryDriveFolderPicker({
   const [browseState, setBrowseState] = useState(emptyBrowseState);
   const [folderSort, setFolderSort] = useState('recent');
   const [query, setQuery] = useState('');
-  const [mobileTab, setMobileTab] = useState('folders');
+  const [pendingFolder, setPendingFolder] = useState(null);
   const [selectedMediaIds, setSelectedMediaIds] = useState([]);
   const [mediaPreviewFilter, setMediaPreviewFilter] = useState('all');
   const [previewRetryToken, setPreviewRetryToken] = useState(0);
@@ -103,6 +93,7 @@ export default function GalleryDriveFolderPicker({
       folderSortOverride = null,
       keepSelectedMedia = true,
       retryToken = previewRetryToken,
+      syncPending = true,
     } = options;
     const effectiveFolderSort = folderSortOverride || folderSort;
 
@@ -146,6 +137,17 @@ export default function GalleryDriveFolderPicker({
         error: '',
       }));
 
+      if (!appendFiles && syncPending) {
+        if (payload?.currentFolder) {
+          setPendingFolder({
+            id: payload.currentFolder.id,
+            name: payload.currentFolder.name,
+          });
+        } else if (!parentId) {
+          setPendingFolder(null);
+        }
+      }
+
       if (!appendFiles && !keepSelectedMedia) {
         setSelectedMediaIds([]);
       }
@@ -168,10 +170,12 @@ export default function GalleryDriveFolderPicker({
     }
 
     setQuery('');
-    setMobileTab(selectedFolderId ? 'preview' : 'folders');
     setSelectedMediaIds(Array.isArray(selectedFileIds) ? selectedFileIds : []);
-    setMediaPreviewFilter(['all', 'images', 'videos'].includes(selectedMediaTypeFilter) ? selectedMediaTypeFilter : 'all');
+    setMediaPreviewFilter(
+      ['all', 'images', 'videos'].includes(selectedMediaTypeFilter) ? selectedMediaTypeFilter : 'all',
+    );
     setFailedPreviewIds([]);
+    setPendingFolder(selectedFolderId ? { id: selectedFolderId, name: null } : null);
     loadFolders(selectedFolderId || null, {
       keepSelectedMedia: true,
       retryToken: Date.now(),
@@ -180,6 +184,7 @@ export default function GalleryDriveFolderPicker({
 
   const activeFolderId = browseState.breadcrumbs[browseState.breadcrumbs.length - 1]?.id;
   const currentParentId = activeFolderId && activeFolderId !== 'root' ? activeFolderId : null;
+  const pathCrumbs = browseState.breadcrumbs.filter((crumb) => crumb.id !== 'root');
 
   const loadMorePreviews = async () => {
     if (!browseState.nextPreviewPageToken || browseState.previewLoadingMore || browseState.loading) {
@@ -190,6 +195,7 @@ export default function GalleryDriveFolderPicker({
       appendFiles: true,
       previewPageToken: browseState.nextPreviewPageToken,
       previewPageSize: 8,
+      syncPending: false,
     });
   };
 
@@ -249,6 +255,7 @@ export default function GalleryDriveFolderPicker({
     return loadFolders(currentParentId, {
       keepSelectedMedia: true,
       retryToken: nextRetryToken,
+      syncPending: false,
     });
   };
 
@@ -286,8 +293,25 @@ export default function GalleryDriveFolderPicker({
     }
   };
 
-  const selectedFolder = browseState.folders.find((folder) => folder.id === selectedFolderId) || browseState.currentFolder;
-  const selectedFolderName = selectedFolder?.name || browseState.currentFolder?.name || 'My Drive';
+  const navigateIntoFolder = (folder) => {
+    setPendingFolder({ id: folder.id, name: folder.name });
+    loadFolders(folder.id, { keepSelectedMedia: false });
+  };
+
+  const confirmFolder =
+    browseState.currentFolder ||
+    (pendingFolder?.id
+      ? {
+          id: pendingFolder.id,
+          name: pendingFolder.name || pendingFolder.id,
+        }
+      : null);
+
+  const selectedFolderName =
+    pendingFolder?.name ||
+    browseState.currentFolder?.name ||
+    (pendingFolder?.id ? pendingFolder.id : null) ||
+    'Select a folder';
 
   return (
     <Transition show={open} as={Fragment}>
@@ -319,7 +343,7 @@ export default function GalleryDriveFolderPicker({
                 <header className="shrink-0 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-5">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <FaGoogleDrive/>
+                      <FaGoogleDrive />
                       <div className="min-w-0">
                         <Dialog.Title className="truncate text-sm font-black text-slate-950 sm:text-base">
                           Google Drive Import
@@ -332,7 +356,7 @@ export default function GalleryDriveFolderPicker({
                       <button
                         type="button"
                         className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:inline-flex"
-                        onClick={() => loadFolders(currentParentId)}
+                        onClick={() => loadFolders(currentParentId, { syncPending: false })}
                         disabled={browseState.loading}
                       >
                         {browseState.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -350,13 +374,21 @@ export default function GalleryDriveFolderPicker({
                   </div>
 
                   <div className="mt-4 flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <span className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600">
+                    <button
+                      type="button"
+                      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+                        !currentParentId ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                      onClick={() => {
+                        setPendingFolder(null);
+                        loadFolders(null, { keepSelectedMedia: false });
+                      }}
+                    >
                       <Home className="h-3.5 w-3.5" />
                       Drive
-                    </span>
-                    {browseState.breadcrumbs.map((crumb, index) => {
-                      const isCurrent = index === browseState.breadcrumbs.length - 1;
-                      const crumbParentId = crumb.id === 'root' ? null : crumb.id;
+                    </button>
+                    {pathCrumbs.map((crumb, index) => {
+                      const isCurrent = index === pathCrumbs.length - 1;
 
                       return (
                         <Fragment key={`${crumb.id}-${index}`}>
@@ -368,7 +400,10 @@ export default function GalleryDriveFolderPicker({
                                 ? 'bg-slate-950 text-white'
                                 : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'
                             }`}
-                            onClick={() => loadFolders(crumbParentId, { keepSelectedMedia: false })}
+                            onClick={() => {
+                              setPendingFolder({ id: crumb.id, name: crumb.name });
+                              loadFolders(crumb.id, { keepSelectedMedia: false });
+                            }}
                           >
                             {crumb.name}
                           </button>
@@ -376,33 +411,10 @@ export default function GalleryDriveFolderPicker({
                       );
                     })}
                   </div>
-
-                  <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 lg:hidden">
-                    <button
-                      type="button"
-                      onClick={() => setMobileTab('folders')}
-                      className={`h-10 rounded-xl text-sm font-black transition ${
-                        mobileTab === 'folders' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'
-                      }`}
-                    >
-                      Folders
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMobileTab('preview')}
-                      className={`h-10 rounded-xl text-sm font-black transition ${
-                        mobileTab === 'preview' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'
-                      }`}
-                    >
-                      Preview
-                    </button>
-                  </div>
                 </header>
 
                 <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[390px_1fr] lg:overflow-hidden">
-                  <aside
-                    className={`${mobileTab === 'folders' ? 'block' : 'hidden'} border-b border-slate-200 bg-slate-50/60 p-4 lg:block lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-5`}
-                  >
+                  <aside className="border-b border-slate-200 bg-slate-50/60 p-4 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-5">
                     <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -415,7 +427,7 @@ export default function GalleryDriveFolderPicker({
                           onClick={() => {
                             const nextSort = folderSort === 'recent' ? 'name' : 'recent';
                             setFolderSort(nextSort);
-                            loadFolders(currentParentId, { folderSortOverride: nextSort });
+                            loadFolders(currentParentId, { folderSortOverride: nextSort, syncPending: false });
                           }}
                           disabled={browseState.loading || browseState.previewLoadingMore}
                           title={folderSort === 'recent' ? 'Sort: recent changes' : 'Sort: name'}
@@ -454,7 +466,8 @@ export default function GalleryDriveFolderPicker({
 
                       {filteredFolders.length > 0
                         ? filteredFolders.map((folder) => {
-                            const isSelected = selectedFolderId === folder.id;
+                            const isSelected =
+                              pendingFolder?.id === folder.id || selectedFolderId === folder.id;
 
                             return (
                               <div
@@ -466,15 +479,11 @@ export default function GalleryDriveFolderPicker({
                                     ? 'border-blue-200 bg-blue-50 shadow-sm'
                                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                                 }`}
-                                onClick={() => {
-                                  loadFolders(folder.id, { keepSelectedMedia: false });
-                                  setMobileTab('preview');
-                                }}
+                                onClick={() => navigateIntoFolder(folder)}
                                 onKeyDown={(event) => {
                                   if (event.key === 'Enter' || event.key === ' ') {
                                     event.preventDefault();
-                                    loadFolders(folder.id, { keepSelectedMedia: false });
-                                    setMobileTab('preview');
+                                    navigateIntoFolder(folder);
                                   }
                                 }}
                               >
@@ -497,20 +506,10 @@ export default function GalleryDriveFolderPicker({
                                     ) : null}
                                   </span>
                                   <span className="mt-1 block truncate text-xs text-slate-500">
-                                    Browse subfolders or select this folder for import.
+                                    Open folder to browse media and confirm import.
                                   </span>
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    className={`${buttonStyles} h-8 px-3 py-1 text-xs`}
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      void selectFolder(folder);
-                                    }}
-                                  >
-                                    {isSelected ? 'Selected' : 'Select'}
-                                  </button>
                                   {isSelected ? (
                                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
                                       <Check className="h-4 w-4" />
@@ -533,9 +532,7 @@ export default function GalleryDriveFolderPicker({
                     </div>
                   </aside>
 
-                  <section
-                    className={`${mobileTab === 'preview' ? 'block' : 'hidden'} bg-white p-4 pb-28 lg:block lg:min-h-0 lg:overflow-y-auto lg:p-6 lg:pb-6`}
-                  >
+                  <section className="bg-white p-4 pb-28 lg:min-h-0 lg:overflow-y-auto lg:p-6 lg:pb-6">
                     <div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm sm:p-5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex min-w-0 items-start gap-3">
@@ -545,9 +542,10 @@ export default function GalleryDriveFolderPicker({
                           <div className="min-w-0">
                             <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Current selection</p>
                             <h2 className="mt-1 truncate text-xl font-black text-slate-950">{selectedFolderName}</h2>
-                            <p className="mt-1 text-sm leading-6 text-slate-600">
-                              This folder is the import source. If no media is checked, the whole selected folder will be imported.
-                            </p>
+                            <AdminHint className="mt-3">
+                              This folder is the import source. If no media is checked, the whole selected folder will be
+                              imported.
+                            </AdminHint>
                           </div>
                         </div>
                         <span className="hidden rounded-2xl bg-white px-4 py-3 text-center text-sm font-black text-blue-700 shadow-sm sm:block">
@@ -568,9 +566,9 @@ export default function GalleryDriveFolderPicker({
                               {filteredPreviewFiles.length}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-slate-500">
+                          <AdminHint className="mt-2">
                             Preview only. Use checks for manual import; leave all unchecked to import the whole folder.
-                          </p>
+                          </AdminHint>
                         </div>
                         <button
                           type="button"
@@ -665,9 +663,7 @@ export default function GalleryDriveFolderPicker({
                                     type="button"
                                     aria-label={isChecked ? `Deselect ${file.name}` : `Select ${file.name}`}
                                     className={`absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border text-white ${
-                                      isChecked
-                                        ? 'border-blue-600 bg-blue-600'
-                                        : 'border-white/70 bg-slate-900/45'
+                                      isChecked ? 'border-blue-600 bg-blue-600' : 'border-white/70 bg-slate-900/45'
                                     }`}
                                     onClick={() => {
                                       setSelectedMediaIds((current) =>
@@ -679,7 +675,7 @@ export default function GalleryDriveFolderPicker({
                                   >
                                     <Check className="h-3.5 w-3.5" />
                                   </button>
-                                  <div className={`relative ${isVideo ? 'aspect-[4/3]' : 'aspect-[4/3]'} bg-slate-100`}>
+                                  <div className="relative aspect-[4/3] bg-slate-100">
                                     {previewFailed ? (
                                       <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-3 text-center text-xs text-slate-500">
                                         <p className="font-semibold text-slate-700">Preview unavailable</p>
@@ -726,7 +722,9 @@ export default function GalleryDriveFolderPicker({
                                   <div className="flex items-start gap-2 p-3">
                                     <div className="min-w-0 flex-1">
                                       <h4 className="truncate text-xs font-bold text-slate-950 sm:text-sm">{file.name}</h4>
-                                      <p className="mt-1 text-xs text-slate-500">{isVideo ? 'Video' : 'Image'} · {file.mimeType}</p>
+                                      <p className="mt-1 text-xs text-slate-500">
+                                        {isVideo ? 'Video' : 'Image'} · {file.mimeType}
+                                      </p>
                                     </div>
                                     <button
                                       type="button"
@@ -755,19 +753,10 @@ export default function GalleryDriveFolderPicker({
                       </div>
                     </div>
 
-                    <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-4 sm:p-5">
-                      <div className="flex gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
-                          <Shield className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <h3 className="font-black text-slate-950">Safe import behavior</h3>
-                          <p className="mt-1 text-sm leading-6 text-slate-600">
-                            The final import only reads files from the selected folder. It will not recursively pull files from child folders.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <AdminHint className="mt-5" title="Safe import behavior">
+                      The final import only reads files from the selected folder. It will not recursively pull files from
+                      child folders.
+                    </AdminHint>
                   </section>
                 </div>
 
@@ -798,15 +787,15 @@ export default function GalleryDriveFolderPicker({
                         type="button"
                         className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 sm:px-5"
                         onClick={() => {
-                          if (browseState.currentFolder) {
-                            void selectFolder(browseState.currentFolder);
+                          if (confirmFolder) {
+                            void selectFolder(confirmFolder);
                           }
                         }}
-                        disabled={!browseState.currentFolder}
+                        disabled={!confirmFolder}
                       >
                         <Upload className="h-4 w-4" />
                         <span>
-                          Select this media
+                          Use this folder
                           {selectedMediaIds.length > 0 ? ` (${selectedMediaIds.length})` : ''}
                         </span>
                       </button>

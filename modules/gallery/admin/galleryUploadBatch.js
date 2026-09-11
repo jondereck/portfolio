@@ -135,7 +135,7 @@ function buildCloudinaryPlaybackUrl({ cloudName, publicId, resourceType, secureU
   return `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto,vc_h264,ac_aac/${publicId}.mp4`;
 }
 
-function uploadDirectToCloudinary(file, { folder, onProgress } = {}) {
+function uploadDirectToCloudinary(file, { folder, onProgress, signal } = {}) {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
@@ -163,6 +163,20 @@ function uploadDirectToCloudinary(file, { folder, onProgress } = {}) {
     xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`);
     xhr.responseType = 'json';
 
+    const abortError = () => Object.assign(new Error('Upload cancelled.'), { name: 'AbortError' });
+    const onAbort = () => {
+      xhr.abort();
+      reject(abortError());
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable || typeof onProgress !== 'function') {
         return;
@@ -176,6 +190,7 @@ function uploadDirectToCloudinary(file, { folder, onProgress } = {}) {
     };
 
     xhr.onload = () => {
+      signal?.removeEventListener('abort', onAbort);
       const payload = xhr.response ?? {};
       if (xhr.status >= 200 && xhr.status < 300 && payload.secure_url) {
         resolve(payload);
@@ -199,20 +214,27 @@ function uploadDirectToCloudinary(file, { folder, onProgress } = {}) {
     };
 
     xhr.onerror = () => {
+      signal?.removeEventListener('abort', onAbort);
       reject(toRequestError({}, 'Network request failed during direct upload.'));
+    };
+
+    xhr.onabort = () => {
+      signal?.removeEventListener('abort', onAbort);
+      reject(abortError());
     };
 
     xhr.send(formData);
   });
 }
 
-async function saveUploadedAlbumPhoto({ albumId, file, uploaded }) {
+async function saveUploadedAlbumPhoto({ albumId, file, uploaded, signal }) {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const contentHash = await sha256Hex(file);
 
   return fetchJson(`/api/gallery/albums/${albumId}/photos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal,
     body: JSON.stringify({
       imageUrl: buildCloudinaryPlaybackUrl({
         cloudName,
@@ -232,17 +254,18 @@ async function saveUploadedAlbumPhoto({ albumId, file, uploaded }) {
   });
 }
 
-async function uploadAlbumFileDirect({ albumId, file, onProgress }) {
+async function uploadAlbumFileDirect({ albumId, file, onProgress, signal }) {
   validateMediaFile(file);
   const uploaded = await uploadDirectToCloudinary(file, {
     folder: `portfolio/gallery/${albumId}`,
     onProgress,
+    signal,
   });
 
-  await saveUploadedAlbumPhoto({ albumId, file, uploaded });
+  await saveUploadedAlbumPhoto({ albumId, file, uploaded, signal });
 }
 
-async function uploadAlbumFileViaServer({ albumId, file, onProgress }) {
+async function uploadAlbumFileViaServer({ albumId, file, onProgress, signal }) {
   validateMediaFile(file);
   const formData = new FormData();
   formData.append('imageFile', file);
@@ -250,6 +273,7 @@ async function uploadAlbumFileViaServer({ albumId, file, onProgress }) {
 
   await uploadFormDataWithProgress(`/api/gallery/albums/${albumId}/photos`, formData, {
     onProgress,
+    signal,
   });
 }
 
@@ -307,6 +331,7 @@ export async function uploadAlbumFiles({
   files,
   onProgressChange,
   concurrency = DEFAULT_UPLOAD_CONCURRENCY,
+  signal,
 }) {
   const nextFiles = Array.from(files || []);
   if (!albumId || nextFiles.length === 0) {
@@ -322,6 +347,14 @@ export async function uploadAlbumFiles({
   const results = new Array(nextFiles.length);
   const perFileLoadedBytes = new Array(nextFiles.length).fill(0);
   let lastResultIndex = -1;
+
+  const assertNotAborted = () => {
+    if (signal?.aborted) {
+      const error = new Error('Upload cancelled.');
+      error.name = 'AbortError';
+      throw error;
+    }
+  };
 
   const getLoadedBytes = () =>
     nextFiles.reduce((sum, file, index) => {
@@ -355,6 +388,7 @@ export async function uploadAlbumFiles({
   };
 
   const processFile = async (index) => {
+    assertNotAborted();
     const file = nextFiles[index];
     emitProgress(index);
 
@@ -368,13 +402,18 @@ export async function uploadAlbumFiles({
           albumId,
           file,
           onProgress: emitFileProgress,
+          signal,
         });
       } catch (error) {
+        if (error?.name === 'AbortError') {
+          throw error;
+        }
         if (error?.errorCode === DIRECT_UPLOAD_NOT_AVAILABLE) {
           await uploadAlbumFileViaServer({
             albumId,
             file,
             onProgress: emitFileProgress,
+            signal,
           });
         } else {
           throw error;
@@ -388,6 +427,10 @@ export async function uploadAlbumFiles({
         reason: 'Uploaded successfully.',
       };
     } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw error;
+      }
+
       const duplicate = isDuplicateUploadError(error);
       if (duplicate) {
         skippedCount += 1;
@@ -413,6 +456,7 @@ export async function uploadAlbumFiles({
 
   const workers = Array.from({ length: workerCount }, async () => {
     while (nextIndex < nextFiles.length) {
+      assertNotAborted();
       const index = nextIndex;
       nextIndex += 1;
       await processFile(index);

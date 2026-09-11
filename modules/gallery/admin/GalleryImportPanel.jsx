@@ -12,7 +12,7 @@ import {
   ghostButtonStyles,
 } from './galleryAdminShared';
 import GalleryCreateAlbumModal from './GalleryCreateAlbumModal';
-import GalleryBatchProgressCard from './GalleryBatchProgressCard';
+import GalleryBatchProgressModal from './GalleryBatchProgressModal';
 import GalleryDriveFolderPicker from './GalleryDriveFolderPicker';
 import GalleryBatchResultSummary from './GalleryBatchResultSummary';
 
@@ -40,6 +40,7 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
     importProgress,
     importSummary,
     handleDriveImport,
+    cancelDriveImport,
     savingAlbum,
     createAlbumRecord,
     loadAlbums,
@@ -376,20 +377,6 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
                     </button>
                   </form>
 
-                  {importingDrive && importProgress ? (
-                    <GalleryBatchProgressCard
-                      progress={importProgress}
-                      heading="Google Drive import in progress"
-                      currentItemFallback="Importing Google Drive folder"
-                      currentItemTitle={importProgress.currentFileName || 'Importing Google Drive folder'}
-                      itemUnit="item"
-                      uploadedLabel="Imported"
-                      skippedLabel="Skipped"
-                      failedLabel="Failed"
-                      className="mt-4"
-                    />
-                  ) : null}
-
                   {importSummary ? (
                     <div className="mt-4 space-y-3">
                       <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/40">
@@ -440,6 +427,19 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
             mediaTypeFilter: folder.mediaTypeFilter || previous.mediaTypeFilter || 'all',
           }));
         }}
+      />
+
+      <GalleryBatchProgressModal
+        open={Boolean(importingDrive && importProgress)}
+        progress={importProgress}
+        heading="Google Drive import in progress"
+        currentItemFallback="Importing Google Drive folder"
+        currentItemTitle={importProgress?.currentFileName || 'Importing Google Drive folder'}
+        itemUnit="item"
+        uploadedLabel="Imported"
+        skippedLabel="Skipped"
+        failedLabel="Failed"
+        onCancel={cancelDriveImport}
       />
     </div>
   );

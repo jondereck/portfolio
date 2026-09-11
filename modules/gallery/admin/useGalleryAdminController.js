@@ -88,6 +88,7 @@ export function useGalleryAdminController() {
   const [importProgress, setImportProgress] = useState(null);
   const [importSummary, setImportSummary] = useState(null);
   const driveImportAbortControllerRef = useRef(null);
+  const uploadAbortControllerRef = useRef(null);
 
   const selectedAlbum = useMemo(
     () => albums.find((album) => album.id === selectedAlbumId) ?? null,
@@ -459,12 +460,14 @@ export function useGalleryAdminController() {
 
     setUploadingFiles(true);
     setUploadSummary(createEmptyUploadSummary());
+    uploadAbortControllerRef.current = new AbortController();
 
     try {
       const summary = await uploadAlbumFiles({
         albumId: selectedAlbumId,
         files: nextFiles,
         onProgressChange: setUploadProgress,
+        signal: uploadAbortControllerRef.current.signal,
       });
 
       setUploadSummary(summary);
@@ -478,16 +481,23 @@ export function useGalleryAdminController() {
         toast.success(summaryMessage);
       }
 
-        if (summary.uploadedCount > 0) {
-          await Promise.all([loadPhotos(selectedAlbumId, sortMode), loadAlbums()]);
-        } else {
-          await loadAlbums();
-        }
-      } catch (error) {
-        toast.error(error.message);
-      } finally {
-        setUploadingFiles(false);
+      if (summary.uploadedCount > 0) {
+        await Promise.all([loadPhotos(selectedAlbumId, sortMode), loadAlbums()]);
+      } else {
+        await loadAlbums();
       }
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        toast.message('Upload cancelled.');
+        setUploadProgress(null);
+        setUploadSummary(createEmptyUploadSummary());
+      } else {
+        toast.error(error.message);
+      }
+    } finally {
+      uploadAbortControllerRef.current = null;
+      setUploadingFiles(false);
+    }
   };
 
   const bulkUpload = async (event) => {
@@ -805,6 +815,16 @@ export function useGalleryAdminController() {
     setImportProgress(null);
   };
 
+  const cancelUpload = () => {
+    if (!uploadingFiles) {
+      return;
+    }
+
+    uploadAbortControllerRef.current?.abort();
+    setUploadingFiles(false);
+    setUploadProgress(null);
+  };
+
   const reorderChange = (nextItems) => {
     setArrangePhotos(nextItems);
     markOrderDirtyFromItems(nextItems);
@@ -1016,6 +1036,7 @@ export function useGalleryAdminController() {
     setCoverPhoto,
     handleDriveImport,
     cancelDriveImport,
+    cancelUpload,
     reorderChange,
     arrangeAction,
     togglePhotoSelect,
