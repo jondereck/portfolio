@@ -41,6 +41,9 @@ export function useGalleryAdminController() {
   const [photos, setPhotos] = useState([]);
   const previousPhotoIdsRef = useRef([]);
   const preserveSelectionOnNextPhotoSyncRef = useRef(false);
+  const photosRef = useRef([]);
+  const loadedAlbumIdRef = useRef(null);
+  photosRef.current = photos;
 
   const [loadingAlbums, setLoadingAlbums] = useState(true);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
@@ -154,10 +157,14 @@ export function useGalleryAdminController() {
       return;
     }
 
-    setLoadingPhotos(true);
+    const isSameAlbumRefresh = loadedAlbumIdRef.current === albumId && photosRef.current.length > 0;
+    if (!isSameAlbumRefresh) {
+      setLoadingPhotos(true);
+    }
     try {
       const data = await fetchJson(`/api/gallery/albums/${albumId}/photos?sort=${nextSort}`);
       setPhotos(Array.isArray(data?.photos) ? data.photos : []);
+      loadedAlbumIdRef.current = albumId;
     } catch (error) {
       toast.error(error.message);
     } finally {

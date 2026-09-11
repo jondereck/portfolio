@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import GalleryBatchResultSummary from './GalleryBatchResultSummary';
 import GalleryDriveFolderPicker from './GalleryDriveFolderPicker';
 import DriveImportWorkflow from './DriveImportWorkflow';
-import { getDriveImportActiveStep, getDriveImportWillLabel } from './DriveImportStepStrip';
+import { getDriveImportWillLabel } from './DriveImportStepStrip';
 
 const emptyDriveConnection = {
   loading: true,
@@ -193,10 +193,6 @@ export default function GalleryDriveImportSection({ controller, selectedAlbum, v
   const effectiveImportTotal = typeof driveForm.mediaCount === 'number' ? Math.max(0, driveForm.mediaCount) : null;
   const isConnected =
     driveConnection.connected && driveConnection.featureEnabled && driveConnection.oauthConfigured;
-  const activeStep = getDriveImportActiveStep({
-    connected: isConnected,
-    importing: importingDrive,
-  });
   const willImportLabel = getDriveImportWillLabel(driveForm.selectedFileIds);
   const albumLabel = selectedAlbum?.name ? `Import to ${selectedAlbum.name}` : 'Import to album';
 
@@ -246,7 +242,6 @@ export default function GalleryDriveImportSection({ controller, selectedAlbum, v
   return (
     <div className="space-y-4">
       <DriveImportWorkflow
-        activeStep={activeStep}
         connected={isConnected}
         connectionBusy={connectionBusy || driveConnection.loading}
         connectionLabel={connectionLabel}

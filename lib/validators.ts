@@ -188,7 +188,18 @@ export const integrationsSettingsSchema = z.object({
     .optional()
     .default({}),
   defaultGalleryView: z.enum(['cinematic', 'compact']).optional().default('cinematic'),
+  galleryLastMediaFilter: z.enum(['all', 'images', 'videos', 'audio', 'nsfw']).optional().default('all'),
+  galleryLastMediaSort: z.enum(['custom', 'dateDesc', 'dateAsc']).optional().default('custom'),
+  galleryLastDriveFolderSort: z.enum(['recent', 'name']).optional().default('recent'),
 });
+
+export const galleryCmsPreferencesSchema = z
+  .object({
+    galleryLastMediaFilter: z.enum(['all', 'images', 'videos', 'audio', 'nsfw']).optional(),
+    galleryLastMediaSort: z.enum(['custom', 'dateDesc', 'dateAsc']).optional(),
+    galleryLastDriveFolderSort: z.enum(['recent', 'name']).optional(),
+  })
+  .strict();
 
 export const securitySettingsSchema = z.object({
   sessionTtlHours: z.number().int().min(1).max(168).optional(),

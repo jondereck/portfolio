@@ -13,6 +13,9 @@ export const defaultAdminIntegrations = {
   blurUnclothyGenerated: true,
   unclothyAlbumDefaults: {},
   defaultGalleryView: 'cinematic',
+  galleryLastMediaFilter: 'all',
+  galleryLastMediaSort: 'custom',
+  galleryLastDriveFolderSort: 'recent',
 };
 
 export const defaultAdminSecurity = {

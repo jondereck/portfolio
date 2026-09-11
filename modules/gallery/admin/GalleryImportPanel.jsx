@@ -14,7 +14,7 @@ import GalleryBatchProgressModal from './GalleryBatchProgressModal';
 import GalleryDriveFolderPicker from './GalleryDriveFolderPicker';
 import GalleryBatchResultSummary from './GalleryBatchResultSummary';
 import DriveImportWorkflow from './DriveImportWorkflow';
-import { getDriveImportActiveStep, getDriveImportWillLabel } from './DriveImportStepStrip';
+import { getDriveImportWillLabel } from './DriveImportStepStrip';
 
 const emptyDriveConnection = {
   loading: true,
@@ -211,10 +211,6 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
 
   const isConnected =
     driveConnection.connected && driveConnection.featureEnabled && driveConnection.oauthConfigured;
-  const activeStep = getDriveImportActiveStep({
-    connected: isConnected,
-    importing: importingDrive,
-  });
   const willImportLabel = getDriveImportWillLabel(driveForm.selectedFileIds);
   const albumLabel = selectedAlbum?.name ? `Import to ${selectedAlbum.name}` : 'Import to album';
 
@@ -274,7 +270,6 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
 
         {selectedAlbum ? (
           <DriveImportWorkflow
-            activeStep={activeStep}
             connected={isConnected}
             connectionBusy={connectionBusy || driveConnection.loading}
             connectionLabel={connectionLabel}

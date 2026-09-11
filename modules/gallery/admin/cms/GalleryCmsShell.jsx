@@ -56,7 +56,12 @@ export default function GalleryCmsShell({
           {sidebar}
         </motion.div>
         {mobileTabs}
-        <motion.div className="min-w-0 lg:h-full lg:overflow-y-auto lg:overscroll-contain" layout transition={motionTransition}>
+        <motion.div
+          data-gallery-scroll-main
+          className="min-w-0 lg:h-full lg:overflow-y-auto lg:overscroll-contain"
+          layout
+          transition={motionTransition}
+        >
           {main}
         </motion.div>
         <AnimatePresence initial={false}>

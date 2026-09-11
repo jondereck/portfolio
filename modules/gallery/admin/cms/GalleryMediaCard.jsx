@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Check, Music, MoreHorizontal, Pause, Play } from 'lucide-react';
+import { Check, Music, Pause, Play } from 'lucide-react';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
 import { getAdminMediaUrl, getPlayableMediaUrl } from '@/app/admin/gallery/utils';
 import { isPhotoAudio, shouldBlurPhoto } from '@/lib/gallery-media';
@@ -14,9 +14,8 @@ const EQ_BARS = [0, 1, 2, 3, 4];
 
 export default function GalleryMediaCard({
   photo,
-  albumName,
   selected,
-  statusLabel,
+  statusLabel: _statusLabel,
   blurUnclothyGenerated = true,
   onToggleSelect,
   onOpenPreview,
@@ -43,7 +42,7 @@ export default function GalleryMediaCard({
 
   return (
     <article
-      className={`group overflow-hidden rounded-xl border text-left transition ${
+      className={`group overflow-hidden rounded-xl border text-left transition select-none ${
         selected
           ? 'border-blue-500 bg-blue-50 shadow-sm ring-2 ring-blue-200 dark:border-blue-400 dark:bg-blue-950/30 dark:ring-blue-900/40'
           : 'border-slate-200 bg-slate-50 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-950/20 dark:hover:border-slate-700 dark:hover:bg-slate-900'
@@ -60,6 +59,7 @@ export default function GalleryMediaCard({
           >
             <button
               type="button"
+              data-gallery-media-control="true"
               onClick={toggleAudio}
               aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
               className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/85 text-indigo-600 shadow-md transition hover:scale-105 hover:bg-white dark:bg-slate-900/75 dark:text-indigo-300"
@@ -110,8 +110,8 @@ export default function GalleryMediaCard({
         ) : (
           <button
             type="button"
-            className="block w-full touch-pan-y"
-            style={{ touchAction: 'pan-y' }}
+            className="block w-full select-none"
+            style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
             onClick={onOpenPreview}
             aria-label={`View ${title}`}
           >
@@ -146,6 +146,7 @@ export default function GalleryMediaCard({
         {selected ? (
           <button
             type="button"
+            data-gallery-select-toggle="true"
             onClick={onToggleSelect}
             aria-label="Deselect"
             className="absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition hover:bg-blue-700"
@@ -155,6 +156,7 @@ export default function GalleryMediaCard({
         ) : (
           <button
             type="button"
+            data-gallery-select-toggle="true"
             onClick={onToggleSelect}
             className="absolute left-2 top-2 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
           >
@@ -165,12 +167,8 @@ export default function GalleryMediaCard({
 
       </div>
 
-      <div className="space-y-1 p-3">
+      <div className="p-3">
         <p className="truncate text-sm font-semibold text-blue-600 dark:text-blue-400">{title}</p>
-        <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="truncate">{albumName || ''}</span>
-          <MoreHorizontal className="h-4 w-4 shrink-0 opacity-60" />
-        </div>
       </div>
     </article>
   );

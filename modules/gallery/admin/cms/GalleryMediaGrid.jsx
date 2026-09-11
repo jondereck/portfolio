@@ -10,6 +10,14 @@ function isVideoMime(mimeType) {
 const LONG_PRESS_MS = 500;
 const MOVE_CANCEL_THRESHOLD_PX = 8;
 
+function photoIdFromPoint(clientX, clientY) {
+  if (typeof document === 'undefined') return null;
+  const el = document.elementFromPoint(clientX, clientY);
+  const node = el instanceof Element ? el.closest('[data-photo-id]') : null;
+  const nextPhotoId = Number(node?.getAttribute('data-photo-id'));
+  return Number.isFinite(nextPhotoId) && nextPhotoId > 0 ? nextPhotoId : null;
+}
+
 export default function GalleryMediaGrid({
   photos,
   albumName,
@@ -45,6 +53,25 @@ export default function GalleryMediaGrid({
     captureEl: null,
     orderedIds: [],
   });
+  const suppressClickRef = useRef(false);
+
+  const resetTouchSelect = () => {
+    if (touchSelectStateRef.current.timerId) {
+      clearTimeout(touchSelectStateRef.current.timerId);
+    }
+    touchSelectStateRef.current = {
+      mode: 'idle',
+      pointerId: null,
+      timerId: null,
+      startX: 0,
+      startY: 0,
+      anchorPhotoId: null,
+      lastPhotoId: null,
+      captureEl: null,
+      orderedIds: [],
+    };
+    setTouchSelecting(false);
+  };
 
   if (!Array.isArray(photos) || photos.length === 0) {
     return <div className="px-4 pb-6 sm:px-5 lg:px-6">{emptyState}</div>;
@@ -52,13 +79,19 @@ export default function GalleryMediaGrid({
 
   return (
     <div
-      className={`grid grid-cols-[repeat(var(--gallery-grid-cols-mobile),minmax(0,1fr))] gap-3 px-4 pb-6 sm:grid-cols-[repeat(var(--gallery-grid-cols-sm),minmax(0,1fr))] sm:px-5 lg:grid-cols-[repeat(var(--gallery-grid-cols-lg),minmax(0,1fr))] lg:px-6 xl:grid-cols-[repeat(var(--gallery-grid-cols-xl),minmax(0,1fr))] ${selectedCount > 0 ? 'pb-32 lg:pb-28' : ''}`}
+      className={`grid grid-cols-[repeat(var(--gallery-grid-cols-mobile),minmax(0,1fr))] gap-3 px-4 pb-6 sm:grid-cols-[repeat(var(--gallery-grid-cols-sm),minmax(0,1fr))] sm:px-5 lg:grid-cols-[repeat(var(--gallery-grid-cols-lg),minmax(0,1fr))] lg:px-6 xl:grid-cols-[repeat(var(--gallery-grid-cols-xl),minmax(0,1fr))] ${selectedCount > 0 ? 'pb-32 lg:pb-28' : ''} select-none`}
       style={{
         '--gallery-grid-cols-mobile': mobileGridColumns,
         '--gallery-grid-cols-sm': smallGridColumns,
         '--gallery-grid-cols-lg': largeGridColumns,
         '--gallery-grid-cols-xl': extraLargeGridColumns,
         touchAction: touchSelecting ? 'none' : 'pan-y',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault();
       }}
       onPointerMove={(event) => {
         if (event.pointerType !== 'touch') return;
@@ -67,68 +100,21 @@ export default function GalleryMediaGrid({
           const dx = Math.abs(event.clientX - touchSelectStateRef.current.startX);
           const dy = Math.abs(event.clientY - touchSelectStateRef.current.startY);
           if (dx > MOVE_CANCEL_THRESHOLD_PX || dy > MOVE_CANCEL_THRESHOLD_PX) {
-            if (touchSelectStateRef.current.timerId) {
-              clearTimeout(touchSelectStateRef.current.timerId);
-            }
-            touchSelectStateRef.current = {
-              mode: 'idle',
-              pointerId: null,
-              timerId: null,
-              startX: 0,
-              startY: 0,
-              anchorPhotoId: null,
-              lastPhotoId: null,
-              captureEl: null,
-              orderedIds: [],
-            };
-            setTouchSelecting(false);
+            resetTouchSelect();
           }
           return;
         }
 
         if (touchSelectStateRef.current.mode !== 'active') return;
 
-        const target = event.target instanceof Element ? event.target.closest('[data-photo-id]') : null;
-        const nextPhotoId = Number(target?.getAttribute('data-photo-id'));
+        const nextPhotoId = photoIdFromPoint(event.clientX, event.clientY);
         if (!nextPhotoId || nextPhotoId === touchSelectStateRef.current.lastPhotoId) return;
         touchSelectStateRef.current.lastPhotoId = nextPhotoId;
         event.preventDefault();
         selectPhotoRange?.(nextPhotoId, touchSelectStateRef.current.orderedIds);
       }}
-      onPointerUp={() => {
-        if (touchSelectStateRef.current.timerId) {
-          clearTimeout(touchSelectStateRef.current.timerId);
-        }
-        touchSelectStateRef.current = {
-          mode: 'idle',
-          pointerId: null,
-          timerId: null,
-          startX: 0,
-          startY: 0,
-          anchorPhotoId: null,
-          lastPhotoId: null,
-          captureEl: null,
-          orderedIds: [],
-        };
-        setTouchSelecting(false);
-      }}
-      onPointerCancel={() => {
-        if (touchSelectStateRef.current.timerId) {
-          clearTimeout(touchSelectStateRef.current.timerId);
-        }
-        touchSelectStateRef.current = {
-          mode: 'idle',
-          pointerId: null,
-          timerId: null,
-          startX: 0,
-          startY: 0,
-          anchorPhotoId: null,
-          lastPhotoId: null,
-          captureEl: null,
-          orderedIds: [],
-        };
-        setTouchSelecting(false);
-      }}
+      onPointerUp={resetTouchSelect}
+      onPointerCancel={resetTouchSelect}
     >
       {photos.map((photo) => {
         const selected = Array.isArray(selectedPhotoIds) && selectedPhotoIds.includes(photo.id);
@@ -138,10 +124,21 @@ export default function GalleryMediaGrid({
           <div
             key={photo.id}
             data-photo-id={photo.id}
+            className="select-none"
+            style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
+            onClickCapture={(event) => {
+              if (!suppressClickRef.current) return;
+              event.preventDefault();
+              event.stopPropagation();
+              suppressClickRef.current = false;
+            }}
             onPointerDown={(event) => {
               if (event.pointerType !== 'touch') return;
               const target = event.target;
-              if (target instanceof Element && target.closest('button,input,label,a,video')) {
+              if (
+                target instanceof Element &&
+                target.closest('input,label,a,video,[data-gallery-select-toggle],[data-gallery-media-control]')
+              ) {
                 return;
               }
 
@@ -163,6 +160,7 @@ export default function GalleryMediaGrid({
                 touchSelectStateRef.current.timerId = null;
                 touchSelectStateRef.current.lastPhotoId = anchorPhotoId;
                 touchSelectStateRef.current.orderedIds = nextOrderedIds;
+                suppressClickRef.current = true;
                 setTouchSelecting(true);
 
                 try {

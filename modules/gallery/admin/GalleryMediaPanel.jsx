@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Images, Info, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,31 @@ function normalizePhotoId(value) {
     return Number.isFinite(parsed) ? parsed : value;
   }
   return value;
+}
+
+const GALLERY_MEDIA_FILTERS = ['all', 'images', 'videos', 'audio', 'nsfw'];
+const GALLERY_MEDIA_SORTS = ['custom', 'dateDesc', 'dateAsc'];
+
+function readGalleryScroll() {
+  if (typeof window === 'undefined') return { windowY: 0, mainTop: 0 };
+  const main = document.querySelector('[data-gallery-scroll-main]');
+  return {
+    windowY: window.scrollY || window.pageYOffset || 0,
+    mainTop: main?.scrollTop ?? 0,
+  };
+}
+
+function applyGalleryScroll(snapshot) {
+  if (!snapshot || typeof window === 'undefined') return;
+  const apply = () => {
+    window.scrollTo({ top: snapshot.windowY, left: 0, behavior: 'auto' });
+    const main = document.querySelector('[data-gallery-scroll-main]');
+    if (main) main.scrollTop = snapshot.mainTop;
+  };
+  apply();
+  requestAnimationFrame(apply);
+  window.setTimeout(apply, 50);
+  window.setTimeout(apply, 180);
 }
 
 function createPendingPreviewTask(albumId, photoId, options = {}) {
@@ -124,6 +149,10 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
   const [mediaPageSize, setMediaPageSize] = useState(48);
   const [mediaGridColumns, setMediaGridColumns] = useState(4);
   const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
+  const mediaScrollRef = useRef({ windowY: 0, mainTop: 0 });
+  const persistPreferencesTimerRef = useRef(null);
+  const previousTabRef = useRef('media');
+  const settingsHydratedRef = useRef(false);
 
   const unclothyQueue = useUnclothyTasksStore((state) => state.queue);
   const unclothyActive = useUnclothyTasksStore((state) => state.active);
@@ -149,6 +178,38 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       setSortMode('custom');
     }
   }, [setSortMode, sortMode]);
+
+  const captureMediaScroll = useCallback(() => {
+    mediaScrollRef.current = readGalleryScroll();
+  }, []);
+
+  const restoreMediaScroll = useCallback(() => {
+    applyGalleryScroll(mediaScrollRef.current);
+  }, []);
+
+  const persistGalleryMediaPreferences = useCallback((nextFilter, nextSort) => {
+    if (typeof window === 'undefined') return;
+    if (persistPreferencesTimerRef.current) {
+      window.clearTimeout(persistPreferencesTimerRef.current);
+    }
+
+    persistPreferencesTimerRef.current = window.setTimeout(() => {
+      const payload = {};
+      if (GALLERY_MEDIA_FILTERS.includes(nextFilter)) {
+        payload.galleryLastMediaFilter = nextFilter;
+      }
+      if (GALLERY_MEDIA_SORTS.includes(nextSort)) {
+        payload.galleryLastMediaSort = nextSort;
+      }
+      if (Object.keys(payload).length === 0) return;
+
+      void fetch('/api/gallery/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }, 400);
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
@@ -182,12 +243,6 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
   }, [startUnclothyRunner]);
 
   useEffect(() => {
-    // Media page default: manual order, with newly added media placed first.
-    resetMediaViewToDefault();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(sidebarCollapsedStorageKey, manualSidebarCollapsed ? 'true' : 'false');
   }, [manualSidebarCollapsed, sidebarCollapsedStorageKey]);
@@ -201,10 +256,30 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     try {
       const payload = await fetchJson('/api/gallery/settings', { method: 'GET' });
       setBlurUnclothyGenerated(payload?.blurUnclothyGenerated !== false);
+
+      if (settingsHydratedRef.current) return;
+      settingsHydratedRef.current = true;
+
+      const nextFilter = payload?.galleryLastMediaFilter;
+      const nextSort = payload?.galleryLastMediaSort;
+
+      if (GALLERY_MEDIA_SORTS.includes(nextSort) && typeof setSortMode === 'function') {
+        setSortMode(nextSort);
+      }
+
+      if (GALLERY_MEDIA_FILTERS.includes(nextFilter) && nextFilter !== 'all') {
+        setActiveChip(nextFilter);
+      } else if (nextSort === 'custom') {
+        setActiveChip('manual');
+      } else if (nextSort === 'dateDesc') {
+        setActiveChip('recent');
+      } else {
+        setActiveChip('all');
+      }
     } catch {
       setBlurUnclothyGenerated(true);
     }
-  }, []);
+  }, [setSortMode]);
 
   useEffect(() => {
     void loadGallerySettings();
@@ -223,6 +298,52 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       }
     };
   }, [loadGallerySettings]);
+
+  useEffect(() => {
+    return () => {
+      if (persistPreferencesTimerRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(persistPreferencesTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const main = document.querySelector('[data-gallery-scroll-main]');
+    const onScroll = () => {
+      if (activeTab !== 'media') return;
+      captureMediaScroll();
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    main?.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      main?.removeEventListener('scroll', onScroll);
+    };
+  }, [activeTab, captureMediaScroll]);
+
+  useEffect(() => {
+    if (previousTabRef.current !== 'media' && activeTab === 'media') {
+      restoreMediaScroll();
+    }
+    previousTabRef.current = activeTab;
+  }, [activeTab, restoreMediaScroll]);
+
+  useEffect(() => {
+    if (loadingPhotos || activeTab !== 'media') return;
+    restoreMediaScroll();
+  }, [activeTab, loadingPhotos, restoreMediaScroll]);
+
+  const dialogLocksScroll = confirmDeleteOpen || filterOpen || Boolean(previewPhoto);
+  useEffect(() => {
+    if (dialogLocksScroll) {
+      captureMediaScroll();
+      return undefined;
+    }
+    if (activeTab !== 'media') return undefined;
+    restoreMediaScroll();
+    return undefined;
+  }, [activeTab, captureMediaScroll, dialogLocksScroll, restoreMediaScroll]);
 
   const chips = useMemo(() => {
     const list = Array.isArray(photos) ? photos : [];
@@ -259,18 +380,20 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
 
   useEffect(() => {
     // If the active chip got hidden (e.g. no media of that type left), fall back to All.
+    if (loadingPhotos) return;
     if (!chips.some((chip) => chip.id === activeChip)) {
       setActiveChip('all');
     }
-  }, [chips, activeChip]);
+  }, [chips, activeChip, loadingPhotos]);
 
   const handleOpenPreview = useCallback(
     (photo) => {
+      captureMediaScroll();
       setPreviewPhoto(photo);
       // Preview should not auto-open generation. Users explicitly open it from the Generate button.
       setPreviewOpenGenerate(false);
     },
-    [],
+    [captureMediaScroll],
   );
 
   const selectedPhoto =
@@ -350,6 +473,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       if (typeof setSortMode === 'function' && sortMode !== 'custom') {
         setSortMode('custom');
       }
+      persistGalleryMediaPreferences('all', 'custom');
       return;
     }
 
@@ -357,7 +481,15 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       if (typeof setSortMode === 'function' && sortMode !== 'dateDesc') {
         setSortMode('dateDesc');
       }
+      persistGalleryMediaPreferences('all', 'dateDesc');
+      return;
     }
+
+    if (chipId === 'selected') {
+      return;
+    }
+
+    persistGalleryMediaPreferences(chipId, sortMode);
   };
 
   useEffect(() => {
@@ -409,6 +541,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
   };
 
   const handleOpenFilter = () => {
+    captureMediaScroll();
     setFilterOpen(true);
   };
 
@@ -522,10 +655,12 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
         loading={confirmingDelete}
         destructive
         onConfirm={async () => {
+          captureMediaScroll();
           try {
             setConfirmingDelete(true);
             await deleteSelectedPhotos({ skipConfirm: true });
             setConfirmDeleteOpen(false);
+            restoreMediaScroll();
           } finally {
             setConfirmingDelete(false);
           }
@@ -618,7 +753,6 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
             selectedAlbumId={selectedAlbumId}
             loadingAlbums={loadingAlbums}
             onSelectAlbum={(albumId) => {
-              resetMediaViewToDefault();
               setSelectedAlbumId(albumId);
               setAlbumSwitchOpen(false);
               setActiveTab('media');
@@ -964,15 +1098,26 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
           }
 
           setActiveChip((current) => {
-            if (current !== 'recent' && current !== 'manual') return current;
-            if (nextSort === 'custom') return 'manual';
-            if (nextSort === 'dateDesc') return 'recent';
+            if (current !== 'recent' && current !== 'manual') {
+              persistGalleryMediaPreferences(current, nextSort);
+              return current;
+            }
+            if (nextSort === 'custom') {
+              persistGalleryMediaPreferences('all', nextSort);
+              return 'manual';
+            }
+            if (nextSort === 'dateDesc') {
+              persistGalleryMediaPreferences('all', nextSort);
+              return 'recent';
+            }
+            persistGalleryMediaPreferences('all', nextSort);
             return 'all';
           });
         }}
         onApplyFilter={(nextFilter) => {
           if (!nextFilter) return;
           setActiveChip(nextFilter);
+          persistGalleryMediaPreferences(nextFilter, sortMode);
         }}
         filterOptions={[
           { id: 'all', title: 'All media', description: 'Show every media item in this album.' },
@@ -1012,7 +1157,6 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
                     : 'border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50'
                 }`}
                 onClick={() => {
-                  resetMediaViewToDefault();
                   setSelectedAlbumId(album.id);
                   setAlbumSwitchOpen(false);
                 }}
@@ -1061,7 +1205,6 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
         albums={albums}
         selectedAlbumId={selectedAlbumId}
         onConfirm={(albumId) => {
-          resetMediaViewToDefault();
           setSelectedAlbumId(albumId);
           setAlbumSwitchOpen(false);
           setActiveTab('media');
@@ -1075,6 +1218,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
         onClose={() => {
           setPreviewPhoto(null);
           setPreviewOpenGenerate(false);
+          restoreMediaScroll();
         }}
         controller={controller}
         album={selectedAlbum}

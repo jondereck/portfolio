@@ -215,9 +215,12 @@ export class GoogleDriveAdapter {
     limit?: number;
     pageToken?: string | null;
     includeAll?: boolean;
+    sort?: 'recent' | 'name';
   }): Promise<{ files: GoogleDriveMediaPreviewEntry[]; nextPageToken: string | null }> {
     const parentId = args.parentId || 'root';
-    const previewLimit = Math.max(1, Math.min(24, args.limit ?? 8));
+    const previewLimit = Math.max(1, Math.min(100, args.limit ?? 50));
+    const sortMode = args.sort === 'name' ? 'name' : 'recent';
+    const orderBy = sortMode === 'name' ? 'name_natural' : 'modifiedTime desc,name_natural';
     const mapPreviewFile = (file: GoogleFileResponse): GoogleDriveMediaPreviewEntry => ({
       id: file.id,
       name: file.name || 'Untitled media',
@@ -236,7 +239,7 @@ export class GoogleDriveAdapter {
           q: `'${parentId}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')`,
           pageSize: '1000',
           fields: 'files(id,name,mimeType),nextPageToken',
-          orderBy: 'createdTime desc',
+          orderBy,
           supportsAllDrives: 'true',
           includeItemsFromAllDrives: 'true',
         });
@@ -267,7 +270,7 @@ export class GoogleDriveAdapter {
       q: `'${parentId}' in parents and trashed = false and (mimeType contains 'image/' or mimeType contains 'video/')`,
       pageSize: String(previewLimit),
       fields: 'files(id,name,mimeType)',
-      orderBy: 'createdTime desc',
+      orderBy,
       supportsAllDrives: 'true',
       includeItemsFromAllDrives: 'true',
     });
@@ -337,6 +340,7 @@ export class GoogleDriveAdapter {
       limit: args.previewLimit,
       pageToken: args.previewPageToken,
       includeAll: args.includeAllPreviews,
+      sort: args.folderSort,
     });
 
     return {
