@@ -7,20 +7,18 @@ import {
   Check,
   ChevronRight,
   Folder,
-  HelpCircle,
   Home,
   Image,
   Loader2,
-  MoreVertical,
   Play,
   RefreshCw,
   Search,
-  Upload,
   X,
 } from 'lucide-react';
 import { FaGoogleDrive } from 'react-icons/fa';
 import AdminHint from '@/components/admin/shared/AdminHint';
 import { fetchJson } from './galleryAdminShared';
+import { getDriveImportModeLabel } from './DriveImportStepStrip';
 
 const emptyBrowseState = {
   loading: false,
@@ -312,6 +310,8 @@ export default function GalleryDriveFolderPicker({
     browseState.currentFolder?.name ||
     (pendingFolder?.id ? pendingFolder.id : null) ||
     'Select a folder';
+  const importModeLabel = getDriveImportModeLabel(selectedMediaIds);
+  const statusFolderLabel = confirmFolder ? selectedFolderName : 'No folder selected';
 
   return (
     <Transition show={open} as={Fragment}>
@@ -348,7 +348,7 @@ export default function GalleryDriveFolderPicker({
                         <Dialog.Title className="truncate text-sm font-black text-slate-950 sm:text-base">
                           Google Drive Import
                         </Dialog.Title>
-                        <p className="truncate text-xs text-slate-500 sm:text-sm">Choose one source folder</p>
+                        <p className="truncate text-xs text-slate-500 sm:text-sm">Browse and confirm a source folder</p>
                       </div>
                     </div>
 
@@ -410,6 +410,23 @@ export default function GalleryDriveFolderPicker({
                         </Fragment>
                       );
                     })}
+                  </div>
+
+                  <div className="mt-3 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        Selected: {statusFolderLabel}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{importModeLabel}</p>
+                    </div>
+                    <AdminHint
+                      title="What gets imported"
+                      label="Import mode hint"
+                      className="shrink-0"
+                    >
+                      Leave all media unchecked to import the whole folder. Check items for a manual selection. Import
+                      does not include files from child folders.
+                    </AdminHint>
                   </div>
                 </header>
 
@@ -533,30 +550,7 @@ export default function GalleryDriveFolderPicker({
                   </aside>
 
                   <section className="bg-white p-4 pb-28 lg:min-h-0 lg:overflow-y-auto lg:p-6 lg:pb-6">
-                    <div className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4 shadow-sm sm:p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex min-w-0 items-start gap-3">
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-600/20">
-                            <Folder className="h-5 w-5" />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-700">Current selection</p>
-                            <h2 className="mt-1 truncate text-xl font-black text-slate-950">{selectedFolderName}</h2>
-                            <AdminHint className="mt-3">
-                              This folder is the import source. If no media is checked, the whole selected folder will be
-                              imported.
-                            </AdminHint>
-                          </div>
-                        </div>
-                        <span className="hidden rounded-2xl bg-white px-4 py-3 text-center text-sm font-black text-blue-700 shadow-sm sm:block">
-                          {browseState.files.length}
-                          <br />
-                          <span className="text-[10px] uppercase tracking-wider text-slate-400">Previews</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <div className="flex items-center gap-2">
@@ -566,9 +560,9 @@ export default function GalleryDriveFolderPicker({
                               {filteredPreviewFiles.length}
                             </span>
                           </div>
-                          <AdminHint className="mt-2">
-                            Preview only. Use checks for manual import; leave all unchecked to import the whole folder.
-                          </AdminHint>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Optional checks override whole-folder import.
+                          </p>
                         </div>
                         <button
                           type="button"
@@ -613,9 +607,7 @@ export default function GalleryDriveFolderPicker({
                         </button>
                       </div>
                       <p className="mt-2 text-xs text-slate-500">
-                        {selectedMediaIds.length > 0
-                          ? `${selectedMediaIds.length} media selected for manual import.`
-                          : 'No media manually selected — importing will include all media in this folder.'}
+                        {importModeLabel}
                       </p>
                       {loadingAllPreviews ? (
                         <p className="mt-1 text-xs font-semibold text-blue-600">Loading all preview items in this folder...</p>
@@ -719,20 +711,13 @@ export default function GalleryDriveFolderPicker({
                                       </span>
                                     ) : null}
                                   </div>
-                                  <div className="flex items-start gap-2 p-3">
-                                    <div className="min-w-0 flex-1">
+                                  <div className="p-3">
+                                    <div className="min-w-0">
                                       <h4 className="truncate text-xs font-bold text-slate-950 sm:text-sm">{file.name}</h4>
                                       <p className="mt-1 text-xs text-slate-500">
                                         {isVideo ? 'Video' : 'Image'} · {file.mimeType}
                                       </p>
                                     </div>
-                                    <button
-                                      type="button"
-                                      aria-label={`More options for ${file.name}`}
-                                      className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                                    >
-                                      <MoreVertical className="h-4 w-4" />
-                                    </button>
                                   </div>
                                 </article>
                               );
@@ -752,40 +737,28 @@ export default function GalleryDriveFolderPicker({
                         ) : null}
                       </div>
                     </div>
-
-                    <AdminHint className="mt-5" title="Safe import behavior">
-                      The final import only reads files from the selected folder. It will not recursively pull files from
-                      child folders.
-                    </AdminHint>
                   </section>
                 </div>
 
-                <footer className="shrink-0 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
+                <footer className="shrink-0 border-t border-slate-200 bg-white/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:px-6">
                   <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      className="hidden items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-slate-800 sm:inline-flex"
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                      Need help?
-                    </button>
-
                     <div className="min-w-0 flex-1 sm:max-w-md">
-                      <p className="truncate text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Selected folder</p>
-                      <p className="truncate text-sm font-black text-slate-950">{selectedFolderName}</p>
+                      <p className="truncate text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Selected</p>
+                      <p className="truncate text-sm font-black text-slate-950">{statusFolderLabel}</p>
+                      <p className="truncate text-xs text-slate-500">{importModeLabel}</p>
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"
-                        className="hidden h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:block"
+                        className="inline-flex h-11 min-w-[5.5rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
                         onClick={onClose}
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 sm:px-5"
+                        className="inline-flex h-11 min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 sm:px-5"
                         onClick={() => {
                           if (confirmFolder) {
                             void selectFolder(confirmFolder);
@@ -793,11 +766,8 @@ export default function GalleryDriveFolderPicker({
                         }}
                         disabled={!confirmFolder}
                       >
-                        <Upload className="h-4 w-4" />
-                        <span>
-                          Use this folder
-                          {selectedMediaIds.length > 0 ? ` (${selectedMediaIds.length})` : ''}
-                        </span>
+                        <Check className="h-4 w-4" />
+                        <span>Confirm folder</span>
                       </button>
                     </div>
                   </div>
