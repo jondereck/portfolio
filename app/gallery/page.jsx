@@ -318,51 +318,55 @@ function CinematicGalleryView({
 
   return (
     <>
-      <section className="mt-6 flex-1 pt-4 sm:pt-6 lg:mt-10 lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:pt-0">
-        <div className="grid h-full content-between gap-7 lg:h-auto lg:content-normal lg:grid-cols-[minmax(0,1fr)_minmax(480px,0.96fr)] xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)] xl:gap-10">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`featured-copy-${activeAlbum.id}`}
-              className="space-y-5 pr-4 sm:pr-6 lg:space-y-6 lg:pr-10"
-              initial={{ opacity: 0, x: -26, scale: 0.985 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 18, scale: 0.99 }}
-              transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="space-y-3 overflow-hidden">
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/88 sm:text-sm">
-                  {normalizeLabel(activeAlbum)}
+      <section className="mt-4 flex flex-1 flex-col pt-2 sm:mt-6 sm:pt-4 lg:mt-10 lg:justify-center lg:pt-0">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:grid lg:flex-none lg:grid-cols-[minmax(0,1fr)_minmax(480px,0.96fr)] lg:items-center lg:gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)]">
+          <div className="relative shrink-0">
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={`featured-copy-${activeAlbum.id}`}
+                className="space-y-3.5 pr-2 sm:space-y-5 sm:pr-6 lg:space-y-6 lg:pr-10"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8, position: 'absolute', insetInline: 0, top: 0 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="space-y-2.5 overflow-hidden sm:space-y-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/88 sm:text-sm">
+                    {normalizeLabel(activeAlbum)}
+                  </p>
+
+                  <h1 className="max-w-full overflow-hidden font-['Bebas_Neue','Inter',sans-serif] text-[3.2rem] uppercase leading-[0.84] tracking-[0.03em] sm:text-[4.15rem] md:text-[4.8rem] lg:text-[6rem] xl:text-[7rem]">
+                    <span className="block break-words">{headlineTop}</span>
+                    <span className="block break-words">{headlineBottom}</span>
+                  </h1>
+                </div>
+
+                <p className="max-w-[calc(100vw-3.5rem)] break-words overflow-hidden pr-10 text-[0.98rem] leading-relaxed text-white/86 sm:max-w-[31rem] sm:pr-12 sm:text-[1.04rem] lg:max-w-[35rem] lg:pr-16 lg:text-[1.08rem] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] lg:[display:block] lg:[-webkit-line-clamp:unset]">
+                  {description}
                 </p>
 
-                <h1 className="max-w-full overflow-hidden font-['Bebas_Neue','Inter',sans-serif] text-[3.2rem] uppercase leading-[0.84] tracking-[0.03em] sm:text-[4.15rem] md:text-[4.8rem] lg:text-[6rem] xl:text-[7rem]">
-                  <span className="block break-words">{headlineTop}</span>
-                  <span className="block break-words">{headlineBottom}</span>
-                </h1>
-              </div>
+                <div>
+                  <Link
+                    href={`/gallery/${activeAlbum.slug}`}
+                    className="inline-flex h-12 items-center rounded-full bg-white px-6 text-sm font-semibold text-slate-900 transition hover:scale-[1.02] hover:bg-slate-100"
+                  >
+                    Open Album
+                  </Link>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-              <p className="max-w-[calc(100vw-3.5rem)] break-words overflow-hidden pr-10 text-[0.98rem] leading-relaxed text-white/86 sm:max-w-[31rem] sm:pr-12 sm:text-[1.04rem] lg:max-w-[35rem] lg:pr-16 lg:text-[1.08rem] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] lg:[display:block] lg:[-webkit-line-clamp:unset]">
-                {description}
-              </p>
-
-              <div>
-                <Link
-                  href={`/gallery/${activeAlbum.slug}`}
-                  className="inline-flex h-12 items-center rounded-full bg-white px-6 text-sm font-semibold text-slate-900 transition hover:scale-[1.02] hover:bg-slate-100"
-                >
-                  Open Album
-                </Link>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          <CinematicAlbumDeck
-            albums={albums}
-            activeIndex={activeIndex}
-            blurUnclothyGenerated={blurUnclothyGenerated}
-            onSelectAlbum={onSelectAlbum}
-            onPauseAutoplay={onPauseAutoplay}
-            onResumeAutoplay={onResumeAutoplay}
-          />
+          <div className="mt-auto min-w-0 lg:mt-0">
+            <CinematicAlbumDeck
+              albums={albums}
+              activeIndex={activeIndex}
+              blurUnclothyGenerated={blurUnclothyGenerated}
+              onSelectAlbum={onSelectAlbum}
+              onPauseAutoplay={onPauseAutoplay}
+              onResumeAutoplay={onResumeAutoplay}
+            />
+          </div>
         </div>
       </section>
 
@@ -371,7 +375,7 @@ function CinematicGalleryView({
         total={albumsLength}
         onPrev={onPrev}
         onNext={onNext}
-        className="mt-4 lg:mt-auto"
+        className="mt-3 sm:mt-4 lg:mt-auto"
       />
     </>
   );
