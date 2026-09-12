@@ -186,9 +186,6 @@ const getAlbumMediaCounts = (album) => {
   };
 };
 
-const getDescription = (album) =>
-  album?.description?.trim() || 'A private cinematic album experience with premium storytelling visuals.';
-
 const getSelectionDirection = (currentIndex, targetIndex, total) => {
   if (total <= 1 || currentIndex === targetIndex) return 1;
 
@@ -298,12 +295,69 @@ function GalleryFooter({ activeIndex, total, onPrev, onNext, className = '' }) {
   );
 }
 
+function AlbumDeckCard({
+  album,
+  isActive = false,
+  blurUnclothyGenerated,
+  onSelect,
+  className = '',
+  cardRef = null,
+  variant = 'deck',
+}) {
+  const albumCounts = getAlbumMediaCounts(album);
+  const isDeck = variant === 'deck';
+
+  return (
+    <button
+      ref={cardRef}
+      type="button"
+      onClick={onSelect}
+      className={joinClassNames(
+        'group relative aspect-[0.72] shrink-0 overflow-hidden rounded-[26px] border text-left shadow-[0_24px_60px_rgba(2,6,23,0.32)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
+        isDeck
+          ? joinClassNames(
+              'snap-center transition-[transform,opacity,border-color,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
+              isActive
+                ? 'z-[1] scale-100 border-white/80 opacity-100 ring-2 ring-white/50'
+                : 'scale-[0.86] border-white/22 opacity-45 hover:border-white/40 hover:opacity-70',
+            )
+          : joinClassNames(
+              'w-full transition duration-300',
+              isActive ? 'border-white/70 ring-2 ring-white/45' : 'border-white/28 hover:border-white/50',
+            ),
+        className,
+      )}
+      aria-label={`Show album ${album.name}`}
+      aria-current={isActive ? 'true' : undefined}
+    >
+      <AlbumCover
+        photo={resolveAlbumCoverPhoto(album)}
+        alt={album.name}
+        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        fallbackClassName="h-full w-full bg-[linear-gradient(140deg,#475569,#64748b,#334155)]"
+        blurUnclothyGenerated={blurUnclothyGenerated}
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(2,6,23,0.9),rgba(2,6,23,0.08)_62%)]" />
+      <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-3.5 sm:p-4">
+        <p className="line-clamp-2 text-[1rem] font-semibold uppercase leading-[1.02] tracking-[0.04em] text-white sm:text-[1.08rem]">
+          {album.name}
+        </p>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-white/82">
+          {albumCounts.photos} photos
+          {albumCounts.videos > 0 ? ` • ${albumCounts.videos} videos` : ''}
+          {albumCounts.audio > 0 ? ` • ${albumCounts.audio} audio` : ''}
+        </p>
+      </div>
+    </button>
+  );
+}
+
 function CinematicGalleryView({
   activeAlbum,
   activeCounts,
   headlineTop,
   headlineBottom,
-  previewAlbums,
+  albums,
   activeIndex,
   albumsLength,
   blurUnclothyGenerated,
@@ -313,6 +367,67 @@ function CinematicGalleryView({
   onPrev,
   onNext,
 }) {
+  const scrollerRef = useRef(null);
+  const cardRefs = useRef([]);
+  const scrollSyncLockRef = useRef(false);
+
+  useEffect(() => {
+    const card = cardRefs.current[activeIndex];
+    const scroller = scrollerRef.current;
+    if (!card || !scroller) return undefined;
+
+    scrollSyncLockRef.current = true;
+    card.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    const unlockTimer = window.setTimeout(() => {
+      scrollSyncLockRef.current = false;
+    }, 520);
+
+    return () => window.clearTimeout(unlockTimer);
+  }, [activeIndex, albumsLength]);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller || albumsLength <= 1) return undefined;
+
+    let settleTimer = null;
+    const syncActiveFromScroll = () => {
+      if (scrollSyncLockRef.current) return;
+
+      const scrollerRect = scroller.getBoundingClientRect();
+      const centerX = scrollerRect.left + scrollerRect.width / 2;
+      let bestIndex = activeIndex;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      cardRefs.current.forEach((card, index) => {
+        if (!card) return;
+        const rect = card.getBoundingClientRect();
+        const cardCenter = rect.left + rect.width / 2;
+        const distance = Math.abs(cardCenter - centerX);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+
+      if (bestIndex !== activeIndex) {
+        onSelectAlbum(bestIndex);
+      }
+    };
+
+    const onScroll = () => {
+      if (settleTimer) window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(syncActiveFromScroll, 90);
+    };
+
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener('scroll', onScroll);
+      if (settleTimer) window.clearTimeout(settleTimer);
+    };
+  }, [activeIndex, albumsLength, onSelectAlbum]);
+
+  const description = activeAlbum?.description?.trim() || '';
+
   return (
     <>
       <section className="mt-6 flex-1 pt-4 sm:pt-6 lg:mt-10 lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:pt-0">
@@ -327,9 +442,11 @@ function CinematicGalleryView({
               transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="space-y-3 overflow-hidden">
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/88 sm:text-sm">
-                  {normalizeLabel(activeAlbum)}
-                </p>
+                {activeAlbum?.description?.trim() ? (
+                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/88 sm:text-sm">
+                    {normalizeLabel(activeAlbum)}
+                  </p>
+                ) : null}
 
                 <h1 className="max-w-full overflow-hidden font-['Bebas_Neue','Inter',sans-serif] text-[3.2rem] uppercase leading-[0.84] tracking-[0.03em] sm:text-[4.15rem] md:text-[4.8rem] lg:text-[6rem] xl:text-[7rem]">
                   <span className="block break-words">{headlineTop}</span>
@@ -337,9 +454,11 @@ function CinematicGalleryView({
                 </h1>
               </div>
 
-              <p className="max-w-[calc(100vw-3.5rem)] break-words overflow-hidden pr-10 text-[0.98rem] leading-relaxed text-white/86 sm:max-w-[31rem] sm:pr-12 sm:text-[1.04rem] lg:max-w-[35rem] lg:pr-16 lg:text-[1.08rem] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] lg:[display:block] lg:[-webkit-line-clamp:unset]">
-                {getDescription(activeAlbum)}
-              </p>
+              {description ? (
+                <p className="max-w-[calc(100vw-3.5rem)] break-words overflow-hidden pr-10 text-[0.98rem] leading-relaxed text-white/86 sm:max-w-[31rem] sm:pr-12 sm:text-[1.04rem] lg:max-w-[35rem] lg:pr-16 lg:text-[1.08rem] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] lg:[display:block] lg:[-webkit-line-clamp:unset]">
+                  {description}
+                </p>
+              ) : null}
 
               <div className="space-y-3.5">
                 <Link
@@ -360,43 +479,25 @@ function CinematicGalleryView({
             onMouseLeave={onResumeAutoplay}
           >
             <div
-              className="-mx-5 overflow-x-auto px-5 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
-              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
+              ref={scrollerRef}
+              className="-mx-5 overflow-x-auto px-5 pb-4 pt-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
             >
-              <div className="flex snap-x snap-mandatory items-stretch gap-3.5 pr-[24vw] sm:pr-[12vw] lg:pr-0">
-                {previewAlbums.map(({ album, index, order }) => {
-                  const coverPhoto = resolveAlbumCoverPhoto(album);
-                  const albumCounts = getAlbumMediaCounts(album);
-                  const isNextUp = order === 0;
-
+              <div className="flex items-center gap-3.5 px-[18vw] sm:px-[10vw] lg:px-8">
+                {albums.map((album, index) => {
+                  const isActive = index === activeIndex;
                   return (
-                    <button
+                    <AlbumDeckCard
                       key={album.id}
-                      type="button"
-                      onClick={() => onSelectAlbum(index)}
-                      className={joinClassNames(
-                        'group relative aspect-[0.72] w-[42vw] min-w-[148px] max-w-[188px] shrink-0 snap-start overflow-hidden rounded-[26px] border text-left shadow-[0_24px_60px_rgba(2,6,23,0.32)] transition duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:w-[31vw] sm:min-w-[170px] sm:max-w-[214px] lg:w-[185px] xl:w-[198px]',
-                        isNextUp ? 'border-white/70 ring-2 ring-white/45' : 'border-white/28 hover:border-white/50',
-                      )}
-                      aria-label={`Show album ${album.name}`}
-                    >
-                      <AlbumCover
-                        photo={coverPhoto}
-                        alt={album.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                        fallbackClassName="h-full w-full bg-[linear-gradient(140deg,#475569,#64748b,#334155)]"
-                        blurUnclothyGenerated={blurUnclothyGenerated}
-                      />
-                      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(2,6,23,0.9),rgba(2,6,23,0.08)_62%)]" />
-                      <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-3.5 sm:p-4">
-                        <p className="line-clamp-2 text-[1rem] font-semibold uppercase leading-[1.02] tracking-[0.04em] text-white sm:text-[1.08rem]">
-                          {album.name}
-                        </p>
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-white/82">
-                          {albumCounts.photos} photos{albumCounts.videos > 0 ? ` • ${albumCounts.videos} videos` : ''}{albumCounts.audio > 0 ? ` • ${albumCounts.audio} audio` : ''}
-                        </p>
-                      </div>
-                    </button>
+                      album={album}
+                      isActive={isActive}
+                      blurUnclothyGenerated={blurUnclothyGenerated}
+                      onSelect={() => onSelectAlbum(index)}
+                      cardRef={(node) => {
+                        cardRefs.current[index] = node;
+                      }}
+                      className="w-[46vw] min-w-[158px] max-w-[210px] sm:w-[34vw] sm:min-w-[180px] sm:max-w-[230px] lg:w-[200px] xl:w-[216px]"
+                    />
                   );
                 })}
               </div>
@@ -427,12 +528,8 @@ function CompactGalleryView({
   const router = useRouter();
 
   const handleCardActivate = (index, slug) => {
-    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches) {
-      router.push(`/gallery/${slug}`);
-      return;
-    }
-
     onSelectAlbum(index);
+    router.push(`/gallery/${slug}`);
   };
 
   return (
@@ -458,61 +555,17 @@ function CompactGalleryView({
 
       <div className="grid grid-cols-2 gap-3.5 sm:gap-5 xl:grid-cols-3">
         {albums.map(({ album, index }) => {
-          const albumCounts = getAlbumMediaCounts(album);
           const isActive = index === activeIndex;
 
           return (
-            <article
+            <AlbumDeckCard
               key={album.id}
-              className={joinClassNames(
-                'cursor-pointer overflow-hidden rounded-[28px] border bg-white/[0.06] shadow-[0_20px_55px_rgba(2,6,23,0.24)] backdrop-blur transition',
-                isActive ? 'border-white/45 ring-1 ring-white/30' : 'border-white/14 hover:border-white/26',
-              )}
-              onClick={() => handleCardActivate(index, album.slug)}
-              onMouseEnter={() => onSelectAlbum(index)}
-            >
-              <div className="relative aspect-[0.86] overflow-hidden">
-                <AlbumCover
-                  photo={resolveAlbumCoverPhoto(album)}
-                  alt={album.name}
-                  className="h-full w-full object-cover transition duration-500 hover:scale-105"
-                  fallbackClassName="h-full w-full bg-[linear-gradient(140deg,#475569,#64748b,#334155)]"
-                  blurUnclothyGenerated={blurUnclothyGenerated}
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(2,6,23,0.9),rgba(2,6,23,0.08)_55%)]" />
-                {isActive ? (
-                  <span className="absolute right-3 top-3 rounded-full border border-white/30 bg-slate-950/45 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/90 backdrop-blur">
-                    Featured
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="space-y-3 p-3.5 sm:space-y-4 sm:p-5">
-                <div className="space-y-2">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-white/62">{normalizeLabel(album)}</p>
-                  <h2 className="text-[1.05rem] font-semibold uppercase leading-[1.02] tracking-[0.04em] text-white sm:text-[1.55rem]">
-                    {album.name}
-                  </h2>
-                  <p className="line-clamp-2 pr-1 text-[12px] leading-relaxed text-white/72 sm:line-clamp-3 sm:pr-3 sm:text-[0.98rem]">
-                    {getDescription(album)}
-                  </p>
-                </div>
-
-                <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                  <AlbumStats
-                    counts={albumCounts}
-                    className="flex-nowrap gap-1.5 overflow-x-auto pr-1 [&::-webkit-scrollbar]:hidden"
-                    pillClassName="whitespace-nowrap border-white/20 bg-white/[0.02] px-2.5 py-1.5 text-[9px] tracking-[0.15em] text-white/86 sm:px-3 sm:text-[10px]"
-                  />
-                  <Link
-                    href={`/gallery/${album.slug}`}
-                    className="hidden h-9 items-center rounded-full border border-white/24 px-3.5 text-xs font-medium text-white transition hover:bg-white/10 sm:inline-flex sm:h-10 sm:px-4 sm:text-sm"
-                  >
-                    Open Album
-                  </Link>
-                </div>
-              </div>
-            </article>
+              album={album}
+              isActive={isActive}
+              variant="grid"
+              blurUnclothyGenerated={blurUnclothyGenerated}
+              onSelect={() => handleCardActivate(index, album.slug)}
+            />
           );
         })}
       </div>
@@ -628,15 +681,6 @@ export default function GalleryPage() {
   const activeCover = activeAlbum ? resolveAlbumCover(activeAlbum) : '';
   const activeCounts = getAlbumMediaCounts(activeAlbum);
   const [headlineTop, headlineBottom] = buildTitleLines(activeAlbum?.name);
-
-  const previewAlbums = useMemo(() => {
-    if (albums.length <= 1) return [];
-
-    return Array.from({ length: albums.length - 1 }, (_, offset) => {
-      const index = (activeIndex + offset + 1) % albums.length;
-      return { album: albums[index], index, order: offset };
-    });
-  }, [albums, activeIndex]);
 
   const compactAlbumEntries = useMemo(() => {
     const query = compactSearchQuery.trim().toLowerCase();
@@ -871,7 +915,7 @@ export default function GalleryPage() {
               activeCounts={activeCounts}
               headlineTop={headlineTop}
               headlineBottom={headlineBottom}
-              previewAlbums={previewAlbums}
+              albums={albums}
               activeIndex={activeIndex}
               albumsLength={albums.length}
               blurUnclothyGenerated={blurUnclothyGenerated}

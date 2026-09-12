@@ -1,9 +1,27 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Info as InfoLucide, Plus as PlusLucide, Save as SaveLucide, Trash2 as Trash2Lucide } from 'lucide-react';
+import {
+  ChevronDown,
+  Image as ImageLucide,
+  Info as InfoLucide,
+  Plus as PlusLucide,
+  Save as SaveLucide,
+  Trash2 as Trash2Lucide,
+} from 'lucide-react';
+import {
+  FaFacebookF,
+  FaGlobe,
+  FaInstagram,
+  FaLink,
+  FaLinkedinIn,
+  FaTwitter,
+  FaYoutube,
+} from 'react-icons/fa';
+import { SiTiktok } from 'react-icons/si';
 import { toast } from 'sonner';
 import ConfirmModal from '@/components/ConfirmModal';
+import { detectProfileLinkPlatform } from '@/lib/gallery-profile-links';
 import { fetchJson, GalleryEmptyState, GalleryPageHeader, GalleryPanelCard, buttonStyles, ghostButtonStyles, inputStyles } from './galleryAdminShared';
 import {
   GalleryAlbumInspectorPanel,
@@ -22,6 +40,19 @@ const mobileTabs = [
   { id: 'create', label: 'Create', icon: PlusLucide },
   { id: 'details', label: 'Details', icon: InfoLucide },
 ];
+
+const DESCRIPTION_MAX = 500;
+
+const profilePlatformIconMap = {
+  instagram: FaInstagram,
+  facebook: FaFacebookF,
+  tiktok: SiTiktok,
+  youtube: FaYoutube,
+  x: FaTwitter,
+  linkedin: FaLinkedinIn,
+  website: FaGlobe,
+  other: FaLink,
+};
 
 const createIcon = (path, viewBox = '0 0 24 24') => {
   return function Icon({ className = 'h-5 w-5' }) {
@@ -79,6 +110,14 @@ const FileTextIcon = createIcon(
     <path d="M10 16h6" />
   </>,
 );
+const GlobeIcon = createIcon(
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18" />
+    <path d="M12 3a14 14 0 0 1 0 18" />
+    <path d="M12 3a14 14 0 0 0 0 18" />
+  </>,
+);
 const RefreshIcon = createIcon(
   <>
     <path d="M20 11a8 8 0 0 0-14.8-3" />
@@ -88,19 +127,40 @@ const RefreshIcon = createIcon(
   </>,
 );
 
-function SectionCard({ title, subtitle, icon: Icon, children }) {
+function AccordionSection({ id, title, subtitle, icon: Icon, open, onToggle, children, danger = false }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-      <div className="mb-5 flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="flex w-full items-start gap-3 px-3 py-3.5 text-left transition hover:bg-slate-50 sm:px-4 dark:hover:bg-slate-800/60"
+        aria-expanded={open}
+      >
+        <div
+          className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+            danger
+              ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300'
+              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200'
+          }`}
+        >
           <Icon className="h-5 w-5" />
         </div>
-        <div className="min-w-0">
-          <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{title}</h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <h3
+            className={`text-[15px] font-semibold tracking-tight sm:text-base ${
+              danger ? 'text-red-600 dark:text-red-300' : 'text-slate-900 dark:text-slate-50'
+            }`}
+          >
+            {title}
+          </h3>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
         </div>
-      </div>
-      {children}
+        <ChevronDown
+          className={`mt-2 h-5 w-5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          aria-hidden
+        />
+      </button>
+      {open ? <div className="border-t border-slate-200 px-3 py-4 sm:px-4 dark:border-slate-800">{children}</div> : null}
     </section>
   );
 }
@@ -142,20 +202,17 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
   const [siteOrigin, setSiteOrigin] = useState('');
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
   const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
+  const [openSections, setOpenSections] = useState({
+    basic: true,
+    cover: false,
+    links: false,
+    publish: false,
+    danger: false,
+  });
 
-  const platformOptions = useMemo(
-    () => [
-      { value: 'instagram', label: 'Instagram' },
-      { value: 'facebook', label: 'Facebook' },
-      { value: 'tiktok', label: 'TikTok' },
-      { value: 'youtube', label: 'YouTube' },
-      { value: 'x', label: 'X' },
-      { value: 'linkedin', label: 'LinkedIn' },
-      { value: 'website', label: 'Website' },
-      { value: 'other', label: 'Other' },
-    ],
-    [],
-  );
+  const toggleSection = useCallback((id) => {
+    setOpenSections((previous) => ({ ...previous, [id]: !previous[id] }));
+  }, []);
 
   const {
     albums,
@@ -372,7 +429,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                   className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
                 >
                   <SaveLucide className="h-4 w-4" />
-                  {savingDetails ? 'Saving...' : 'Save'}
+                  {savingDetails ? 'Saving...' : detailsDirty ? 'Save changes' : 'Save'}
                 </button>
                 <button
                   type="button"
@@ -539,23 +596,24 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                     <>
                       <form
                         id="gallery-albums-manage-form"
-                        className="space-y-5"
+                        className="space-y-3"
                         onSubmit={saveAlbumDetails}
                       >
-        
-
-                        <SectionCard
+                        <AccordionSection
+                          id="basic"
                           title="Basic details"
                           subtitle="Core album information in a cleaner and more readable form."
                           icon={FileTextIcon}
+                          open={openSections.basic}
+                          onToggle={toggleSection}
                         >
-                          <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-4">
                             <div>
                               <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">
                                 Album name
                               </label>
                               <input
-                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
+                                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
                                 value={detailsForm.name}
                                 onChange={(event) => {
                                   setDetailsForm((previous) => ({ ...previous, name: event.target.value }));
@@ -572,7 +630,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                                 Slug
                               </label>
                               <input
-                                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
+                                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
                                 value={detailsForm.slug}
                                 onChange={(event) => {
                                   setDetailsForm((previous) => ({ ...previous, slug: event.target.value }));
@@ -582,98 +640,87 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                                 disabled={savingDetails}
                               />
                             </div>
-                          </div>
 
-                          <div className="mt-4">
-                            <label className="mb-2 block text-sm font-medium text-slate-600 dark:text-slate-300">
-                              Description
-                            </label>
-                            <textarea
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
-                              rows={4}
-                              value={detailsForm.description}
-                              onChange={(event) => {
-                                setDetailsForm((previous) => ({ ...previous, description: event.target.value }));
-                                setDetailsDirty(true);
-                              }}
-                              placeholder="Album description"
-                              disabled={savingDetails}
-                            />
+                            <div>
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300">
+                                  Description
+                                </label>
+                                <span className="text-xs text-slate-400">
+                                  {Math.min(String(detailsForm.description || '').length, DESCRIPTION_MAX)}/
+                                  {DESCRIPTION_MAX}
+                                </span>
+                              </div>
+                              <textarea
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
+                                rows={4}
+                                maxLength={DESCRIPTION_MAX}
+                                value={detailsForm.description}
+                                onChange={(event) => {
+                                  setDetailsForm((previous) => ({
+                                    ...previous,
+                                    description: event.target.value.slice(0, DESCRIPTION_MAX),
+                                  }));
+                                  setDetailsDirty(true);
+                                }}
+                                placeholder="Album description"
+                                disabled={savingDetails}
+                              />
+                            </div>
                           </div>
-                        </SectionCard>
+                        </AccordionSection>
 
-                        <SectionCard
-                          title="Publishing & sharing"
-                          subtitle="Control visibility and private sharing in one place."
-                          icon={LinkIcon}
+                        <AccordionSection
+                          id="cover"
+                          title="Cover & media"
+                          subtitle="Manage album cover, visibility, and media settings."
+                          icon={ImageLucide}
+                          open={openSections.cover}
+                          onToggle={toggleSection}
                         >
-                          <div className="space-y-4">
-                            <ToggleRow
-                              id="gallery-albums-published"
-                              title="Published"
-                              description="Make this album visible to your audience."
-                              checked={detailsForm.isPublished}
-                              onChange={(event) => {
-                                setDetailsForm((previous) => ({ ...previous, isPublished: event.target.checked }));
-                                setDetailsDirty(true);
-                              }}
-                              disabled={savingDetails}
-                            />
-                            <ToggleRow
-                              id="gallery-albums-share-link"
-                              title="Enable share link"
-                              description="Allow anyone with the link to view this album."
-                              checked={detailsForm.shareLinkEnabled}
-                              onChange={(event) => {
-                                setDetailsForm((previous) => ({ ...previous, shareLinkEnabled: event.target.checked }));
-                                setDetailsDirty(true);
-                              }}
-                              disabled={savingDetails}
-                            />
+                          <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40">
+                              <span>Cover photo</span>
+                              <span className="font-medium text-slate-900 dark:text-slate-50">
+                                {selectedAlbum.coverPhotoId ? 'Assigned' : 'None'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/40">
+                              <span>Media items</span>
+                              <span className="font-medium text-slate-900 dark:text-slate-50">
+                                {albumCountLabel || '0 items'}
+                              </span>
+                            </div>
                           </div>
-                        </SectionCard>
+                        </AccordionSection>
 
-                        <SectionCard
+                        <AccordionSection
+                          id="links"
                           title="Profile links"
-                          subtitle="Add social profile links related to this album."
+                          subtitle="Add and manage social profile links related to this album."
                           icon={LinkIcon}
+                          open={openSections.links}
+                          onToggle={toggleSection}
                         >
                           <div className="space-y-3">
                             {profileLinks.map((entry, index) => {
                               const urlValue = entry?.url ?? '';
                               const urlValid = !urlValue || isValidHttpUrl(urlValue);
+                              const platform = detectProfileLinkPlatform(urlValue) || entry?.platform || 'other';
+                              const PlatformIcon = profilePlatformIconMap[platform] || FaLink;
 
                               return (
                                 <div
-                                  key={`${entry.platform}-${index}`}
-                                  className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[180px_minmax(0,1fr)_44px] dark:border-slate-800 dark:bg-slate-950/40"
+                                  key={`profile-link-${index}`}
+                                  className="flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-950/40"
                                 >
-                                  <select
-                                    className="h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-600"
-                                    value={entry.platform}
-                                    onChange={(event) => {
-                                      const nextPlatform = event.target.value;
-                                      setDetailsForm((previous) => ({
-                                        ...previous,
-                                        profileLinks: profileLinks.map((linkEntry, entryIndex) =>
-                                          entryIndex === index ? { ...linkEntry, platform: nextPlatform } : linkEntry,
-                                        ),
-                                      }));
-                                      setDetailsDirty(true);
-                                    }}
-                                    disabled={savingDetails}
-                                    aria-label="Profile link platform"
-                                  >
-                                    {platformOptions.map((option) => (
-                                      <option key={option.value} value={option.value}>
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <span className="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                    <PlatformIcon size={18} aria-hidden focusable="false" />
+                                  </span>
 
-                                  <div className="space-y-1">
+                                  <div className="min-w-0 flex-1 space-y-1">
                                     <input
-                                      className={`h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:bg-slate-950 dark:text-slate-50 ${
+                                      className={`h-11 w-full rounded-xl border bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 disabled:opacity-60 dark:bg-slate-950 dark:text-slate-50 ${
                                         urlValid
                                           ? 'border-slate-200 dark:border-slate-800 dark:focus:border-slate-600'
                                           : 'border-rose-400 focus:border-rose-500 dark:border-rose-500 dark:focus:border-rose-400'
@@ -681,10 +728,13 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                                       value={urlValue}
                                       onChange={(event) => {
                                         const nextUrl = event.target.value;
+                                        const nextPlatform = detectProfileLinkPlatform(nextUrl);
                                         setDetailsForm((previous) => ({
                                           ...previous,
                                           profileLinks: profileLinks.map((entryItem, entryIndex) =>
-                                            entryIndex === index ? { ...entryItem, url: nextUrl } : entryItem,
+                                            entryIndex === index
+                                              ? { ...entryItem, url: nextUrl, platform: nextPlatform }
+                                              : entryItem,
                                           ),
                                         }));
                                         setDetailsDirty(true);
@@ -702,7 +752,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
 
                                   <button
                                     type="button"
-                                    className="flex h-12 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
+                                    className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-200 bg-white text-rose-500 transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-900/50 dark:bg-slate-950 dark:text-rose-300 dark:hover:bg-rose-950/30"
                                     aria-label="Delete profile link"
                                     onClick={() => {
                                       setDetailsForm((previous) => ({
@@ -723,7 +773,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                             <button
                               type="button"
-                              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
+                              className="inline-flex items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-transparent px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
                               onClick={() => {
                                 setDetailsForm((previous) => {
                                   const currentLinks = Array.isArray(previous?.profileLinks) ? previous.profileLinks : [];
@@ -733,7 +783,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
 
                                   return {
                                     ...previous,
-                                    profileLinks: [...currentLinks, { platform: 'instagram', label: '', url: '' }],
+                                    profileLinks: [...currentLinks, { platform: 'other', label: '', url: '' }],
                                   };
                                 });
                                 setDetailsDirty(true);
@@ -741,45 +791,103 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
                               disabled={savingDetails || profileLinks.length >= 12}
                             >
                               <PlusIcon className="h-4 w-4" />
-                              {profileLinks.length === 0 ? 'Add first link' : 'Add link'}
+                              Add link
                             </button>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{profileLinks.length}/12 links saved.</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {profileLinks.length}/12 links saved.
+                            </p>
                           </div>
-                        </SectionCard>
+                        </AccordionSection>
 
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <AccordionSection
+                          id="publish"
+                          title="Publish settings"
+                          subtitle="Control who can view this album."
+                          icon={GlobeIcon}
+                          open={openSections.publish}
+                          onToggle={toggleSection}
+                        >
+                          <div className="space-y-4">
+                            <ToggleRow
+                              id="gallery-albums-published"
+                              title="Published"
+                              description="Make this album visible to your audience."
+                              checked={detailsForm.isPublished}
+                              onChange={(event) => {
+                                setDetailsForm((previous) => ({ ...previous, isPublished: event.target.checked }));
+                                setDetailsDirty(true);
+                              }}
+                              disabled={savingDetails}
+                            />
+                            <ToggleRow
+                              id="gallery-albums-share-link"
+                              title="Enable share link"
+                              description="Allow anyone with the link to view this album."
+                              checked={detailsForm.shareLinkEnabled}
+                              onChange={(event) => {
+                                setDetailsForm((previous) => ({
+                                  ...previous,
+                                  shareLinkEnabled: event.target.checked,
+                                }));
+                                setDetailsDirty(true);
+                              }}
+                              disabled={savingDetails}
+                            />
+                          </div>
+                        </AccordionSection>
+
+                        <AccordionSection
+                          id="danger"
+                          title="Danger zone"
+                          subtitle="Permanently delete this album."
+                          icon={TrashIcon}
+                          open={openSections.danger}
+                          onToggle={toggleSection}
+                          danger
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteOpen(true)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                            Delete album
+                          </button>
+                        </AccordionSection>
+
+                        <div className="flex flex-col gap-3 pt-1 md:flex-row md:items-center md:justify-between">
                           <div className="flex flex-wrap gap-3">
                             <button
                               type="submit"
                               disabled={!detailsDirty || savingDetails}
-                              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 xl:hidden"
+                              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 xl:hidden"
                             >
                               <SaveIcon className="h-4 w-4" />
-                              {savingDetails ? 'Saving...' : 'Save album'}
+                              {savingDetails ? 'Saving...' : detailsDirty ? 'Save changes' : 'Save album'}
                             </button>
 
                             <button
                               type="button"
                               disabled={!detailsDirty || savingDetails}
                               onClick={() => {
-                                setDetailsForm(selectedAlbum);
+                                setDetailsForm({
+                                  name: selectedAlbum.name || '',
+                                  slug: selectedAlbum.slug || '',
+                                  description: selectedAlbum.description || '',
+                                  isPublished: Boolean(selectedAlbum.isPublished),
+                                  shareLinkEnabled: Boolean(selectedAlbum.shareLinkEnabled),
+                                  profileLinks: Array.isArray(selectedAlbum.profileLinks)
+                                    ? selectedAlbum.profileLinks
+                                    : [],
+                                });
                                 setDetailsDirty(false);
                               }}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                             >
                               <RefreshIcon className="h-4 w-4" />
                               Reset changes
                             </button>
                           </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteOpen(true)}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30 xl:hidden"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                            Delete album
-                          </button>
                         </div>
                       </form>
                     </>
@@ -811,7 +919,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
               className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
             >
               <SaveLucide className="h-4 w-4" />
-              {savingDetails ? 'Saving...' : 'Save'}
+              {savingDetails ? 'Saving...' : detailsDirty ? 'Save changes' : 'Save'}
             </button>
           </div>
         </div>

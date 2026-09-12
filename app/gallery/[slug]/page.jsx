@@ -3582,6 +3582,14 @@ export default function AlbumDetailPage({ params }) {
   const totalPhotos = photos.length;
   const totalAudio = photos.filter((item) => isPhotoAudio(item)).length;
   const totalVideos = photos.filter((item) => !isPhotoAudio(item) && isPhotoVideo(item)).length;
+  const canContinueSlideshow =
+    filteredPhotos.length > 0 && isResumableSession(savedViewerSession);
+  const showDownloadZip = accessMode !== "public";
+  const viewingActionCols = [
+    canContinueSlideshow,
+    true,
+    showDownloadZip,
+  ].filter(Boolean).length;
   const profileLinks = useMemo(() => {
     const links = album?.profileLinks;
     if (!Array.isArray(links)) return [];
@@ -3605,7 +3613,7 @@ export default function AlbumDetailPage({ params }) {
           Back to albums
         </Link>
 
-        {resumePrompt && !viewerOpen ? (
+        {resumePrompt && !viewerOpen && filteredPhotos.length > 0 ? (
           <div
             className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
             role="presentation"
@@ -3770,19 +3778,24 @@ export default function AlbumDetailPage({ params }) {
 
           <div
             className={`grid gap-2.5 p-3.5 sm:gap-3 sm:p-4 ${
-              accessMode !== "public" ? "grid-cols-3" : "grid-cols-2"
+              viewingActionCols >= 3
+                ? "grid-cols-3"
+                : viewingActionCols === 2
+                  ? "grid-cols-2"
+                  : "grid-cols-1"
             }`}
           >
-            <button
-              type="button"
-              onClick={openSlideshowOrResume}
-              disabled={filteredPhotos.length === 0}
-              className="inline-flex h-11 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-emerald-400/55 bg-[#0c3329] px-2.5 text-[12px] font-semibold text-white transition hover:bg-[#0f3f33] disabled:cursor-not-allowed disabled:opacity-40 sm:px-3.5 sm:text-sm"
-            >
-              <Play className="h-3.5 w-3.5 shrink-0 fill-emerald-300 text-emerald-300" />
-              <span className="truncate">Continue</span>
-              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
-            </button>
+            {canContinueSlideshow ? (
+              <button
+                type="button"
+                onClick={openSlideshowOrResume}
+                className="inline-flex h-11 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-emerald-400/55 bg-[#0c3329] px-2.5 text-[12px] font-semibold text-white transition hover:bg-[#0f3f33] sm:px-3.5 sm:text-sm"
+              >
+                <Play className="h-3.5 w-3.5 shrink-0 fill-emerald-300 text-emerald-300" />
+                <span className="truncate">Continue</span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
+              </button>
+            ) : null}
 
             <button
               type="button"
@@ -3794,7 +3807,7 @@ export default function AlbumDetailPage({ params }) {
               <span className="truncate">New Slideshow</span>
             </button>
 
-            {accessMode !== "public" ? (
+            {showDownloadZip ? (
               <button
                 type="button"
                 onClick={handleDownloadAlbumZip}
