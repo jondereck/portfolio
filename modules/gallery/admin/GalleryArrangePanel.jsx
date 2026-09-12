@@ -610,10 +610,14 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
                   disabled={movingPhotos || confirmingDelete}
                   targetAlbumName={moveTargetAlbumName}
                   canSetCover={
-                    selectedCount === 1 && Boolean(firstSelectedPhoto) && !isAudioPhoto(firstSelectedPhoto)
+                    selectedCount === 1 &&
+                    Boolean(firstSelectedPhoto) &&
+                    !isAudioPhoto(firstSelectedPhoto) &&
+                    !isVideoMime(firstSelectedPhoto?.mimeType)
                   }
                   onSetCover={() => {
                     if (selectedCount !== 1 || !firstSelectedPhoto) return;
+                    if (isAudioPhoto(firstSelectedPhoto) || isVideoMime(firstSelectedPhoto?.mimeType)) return;
                     void setCoverPhoto(firstSelectedPhoto.id);
                   }}
                   onPickAlbum={() => setMovePickerOpen(true)}

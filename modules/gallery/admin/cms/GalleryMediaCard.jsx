@@ -148,14 +148,12 @@ export default function GalleryMediaCard({
                 />
               ) : null}
               {isVideo ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="rounded-full border border-white/30 bg-slate-950/70 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white shadow-lg backdrop-blur">
-                    Video
-                  </span>
-                </div>
+                <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded-md border border-white/15 bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/90 backdrop-blur-sm">
+                  Video
+                </span>
               ) : null}
               {shouldBlur ? (
-                <div className="pointer-events-none absolute left-2 top-2 rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+                <div className="pointer-events-none absolute right-1.5 top-1.5 rounded-md border border-white/15 bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/90">
                   NSFW
                 </div>
               ) : null}
@@ -164,17 +162,24 @@ export default function GalleryMediaCard({
         )}
 
         {selected ? (
-          <span className="pointer-events-none absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
-            <Check className="h-4 w-4" />
+          <span className="pointer-events-none absolute left-1 top-1 inline-flex h-9 w-9 items-center justify-center sm:left-1.5 sm:top-1.5">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
+              <Check className="h-3 w-3" strokeWidth={2.5} />
+            </span>
           </span>
         ) : (
           <button
             type="button"
             data-gallery-select-toggle="true"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
             onClick={onToggleSelect}
             aria-label={`Select ${title}`}
-            className="absolute left-2 top-2 hidden h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 opacity-0 shadow-sm transition hover:bg-white hover:text-slate-900 group-hover:opacity-100 sm:inline-flex dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-50"
-          />
+            className="absolute left-1 top-1 inline-flex h-9 w-9 items-center justify-center sm:left-1.5 sm:top-1.5 sm:opacity-0 sm:group-hover:opacity-100"
+          >
+            <span className="inline-flex h-5 w-5 rounded-full border border-slate-200/90 bg-white/90 shadow-sm dark:border-slate-600 dark:bg-slate-900/85" />
+          </button>
         )}
       </div>
     </article>

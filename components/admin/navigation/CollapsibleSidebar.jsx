@@ -23,7 +23,7 @@ import {
 import { Fragment } from 'react';
 import { getAvatarInitials } from '@/lib/auth/avatar-display';
 
-const ADMIN_BRAND_LOGO_SRC = '/jdn_logo.png';
+const ADMIN_BRAND_MARK_SRC = '/logo192.png';
 
 const iconMap = {
   layoutDashboard: LayoutDashboard,
@@ -73,16 +73,16 @@ export default function CollapsibleSidebar({
             <button
               type="button"
               onClick={onToggle}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-0.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
               aria-label="Expand sidebar"
               title="Expand sidebar"
             >
               <Image
-                src={ADMIN_BRAND_LOGO_SRC}
+                src={ADMIN_BRAND_MARK_SRC}
                 alt=""
-                width={28}
-                height={28}
-                className="h-7 w-7 object-contain"
+                width={40}
+                height={40}
+                className="h-full w-full object-contain"
                 priority
               />
             </button>

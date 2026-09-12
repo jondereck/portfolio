@@ -63,12 +63,14 @@ const SortableMediaCard = memo(function SortableMediaCard({
   isDragging,
   isDropTarget,
   dragActive,
+  allowDrag,
   onToggleSelect,
   onPreview,
   blurUnclothyGenerated,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: photo.id,
+    disabled: !allowDrag,
     transition: {
       duration: 180,
       easing: 'cubic-bezier(0.2, 0, 0, 1)',
@@ -78,7 +80,7 @@ const SortableMediaCard = memo(function SortableMediaCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    touchAction: 'manipulation',
+    touchAction: allowDrag ? 'none' : 'manipulation',
   };
 
   return (
@@ -90,7 +92,7 @@ const SortableMediaCard = memo(function SortableMediaCard({
         isDragging ? 'z-20 opacity-30' : ''
       } ${isDropTarget ? 'z-10 scale-[1.01]' : ''}`}
       {...attributes}
-      {...listeners}
+      {...(allowDrag ? listeners : {})}
     >
       {isDropTarget ? (
         <span
@@ -124,6 +126,7 @@ const SortableMediaCard = memo(function SortableMediaCard({
   prevProps.isDragging === nextProps.isDragging &&
   prevProps.isDropTarget === nextProps.isDropTarget &&
   prevProps.dragActive === nextProps.dragActive &&
+  prevProps.allowDrag === nextProps.allowDrag &&
   prevProps.blurUnclothyGenerated === nextProps.blurUnclothyGenerated &&
   prevProps.onToggleSelect === nextProps.onToggleSelect &&
   prevProps.onPreview === nextProps.onPreview
@@ -251,6 +254,23 @@ export default function SortableMediaGrid({
   const draggedSet = useMemo(() => new Set(draggedIds), [draggedIds]);
   const dragActive = activeId !== null;
   const selectionMode = selectedSet.size > 0;
+  const [coarsePointer, setCoarsePointer] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const media = window.matchMedia('(pointer: coarse)');
+    const sync = () => setCoarsePointer(Boolean(media.matches));
+    sync();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', sync);
+      return () => media.removeEventListener('change', sync);
+    }
+    media.addListener(sync);
+    return () => media.removeListener(sync);
+  }, []);
+
+  // Mobile: select first (tap the circle). Drag-to-reorder only after something is selected.
+  const allowCardDrag = !coarsePointer || selectionMode;
   const visibleItems = dragActive ? previewItems : items;
   const sortableIds = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
   const normalizedGridColumns = Math.max(2, Math.min(8, Number(gridColumns) || 4));
@@ -358,10 +378,13 @@ export default function SortableMediaGrid({
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { delay: 320, tolerance: 8 },
+      // Mouse / stylus: short delay. Touch reorder uses a longer delay so taps can select.
+      activationConstraint: coarsePointer
+        ? { delay: 450, tolerance: 10 }
+        : { delay: 220, tolerance: 6 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 320, tolerance: 8 },
+      activationConstraint: { delay: 450, tolerance: 10 },
     }),
   );
 
@@ -502,6 +525,7 @@ export default function SortableMediaGrid({
               isDragging={draggedSet.has(photo.id)}
               isDropTarget={overId === photo.id && !draggedSet.has(photo.id)}
               dragActive={dragActive}
+              allowDrag={allowCardDrag}
               onToggleSelect={onToggleSelect}
               onPreview={onPreview}
               blurUnclothyGenerated={blurUnclothyGenerated}

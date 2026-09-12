@@ -1083,6 +1083,17 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
         selectedCount={selectedCount}
         disabled={confirmingDelete || movingPhotos || savingBulkBlurMode}
         targetAlbumName={moveTargetAlbumName}
+        canSetCover={
+          selectedCount === 1 &&
+          Boolean(firstSelectedPhoto) &&
+          !isAudioPhoto(firstSelectedPhoto) &&
+          !isVideoMime(firstSelectedPhoto?.mimeType)
+        }
+        onSetCover={() => {
+          if (selectedCount !== 1 || !firstSelectedPhoto) return;
+          if (isAudioPhoto(firstSelectedPhoto) || isVideoMime(firstSelectedPhoto?.mimeType)) return;
+          void setCoverPhoto(firstSelectedPhoto.id);
+        }}
         onPickAlbum={() => setMovePickerOpen(true)}
         onMove={() => {
           if (!moveTargetAlbumId || moveTargetAlbumId === selectedAlbumId) return;

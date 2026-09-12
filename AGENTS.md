@@ -19,10 +19,15 @@ Goal: **save tokens** by asking the graph first instead of re-discovering the co
 
 ### 2026-09-12
 
+- **Subtle video badge** — Media card “Video” label moved off-center to a small bottom-right chip (NSFW also tightened top-right). `GalleryMediaCard.jsx`.
+- **Smaller media select marks** — Selection circle / check on media cards reduced to 20×20 (`h-5 w-5`) so they don’t dominate thumbnails. `GalleryMediaCard.jsx`.
+- **Collapsed sidebar mark size** — Collapsed sidebar uses square `/logo192.png` JN mark filling the 40×40 control (wide `/jdn_logo.png` lockup was shrinking via object-contain). `CollapsibleSidebar.jsx`.
+- **Mobile arrange select vs drag** — On coarse pointers, card drag is disabled until at least one item is selected; select circle always visible on mobile. Reorder via long-press only after selection. Fixes inability to select for Move. `SortableMediaGrid.jsx`, `GalleryMediaCard.jsx`.
+- **Video grid thumbnails restored** — Anti-download change left non-Cloudinary videos as empty dark tiles. Thumbnails now try Cloudinary poster → Drive thumbnail → muted first-frame `<video>` fallback. `MediaPreview.jsx`.
+- **Web selection bar** — Desktop selection chrome matches compact floating bar (count badge, “media selected” / “Add to album”, album picker, icon actions, clear). **Set cover (image icon) only when exactly one image is selected** (hidden for multi-select, video, audio). Media + Arrange wired. `GallerySelectionActionsPopup.jsx`, `GalleryMediaPanel.jsx`, `GalleryArrangePanel.jsx`.
 - **Admin collapsed sidebar logo** — Collapsed desktop sidebar shows `/jdn_logo.png` (click to expand) instead of hamburger; skeleton matched. `components/admin/navigation/CollapsibleSidebar.jsx`, `AdminSidebarSkeleton.jsx`.
 - **Media per-page default 24** — Gallery Media “Per page” default/fallback is 24 (was 48). `modules/gallery/admin/GalleryMediaPanel.jsx`.
 - **Single-media download blocked** — Only album ZIP download remains. Per-photo download API returns 403; Download buttons removed from gallery viewer + admin media viewer. Thumbnails avoid `<video src>` (poster/placeholder) to reduce IDM overlays; playback/media proxies use protect attrs + `Content-Disposition: inline`. Key: `app/api/gallery/albums/[id]/photos/[photoId]/download/route.ts`, `lib/media-protect.js`, `MediaPreview.jsx`, `app/gallery/[slug]/page.jsx`, `GalleryMediaViewer.jsx`, Drive/media proxy routes.
-- **Selection bar redesign (web)** — User provided compact floating bar reference (count · “media selected” / “Add to album” · album dropdown · icon actions · X). **Not implemented yet**; awaiting icon mapping (esp. first image button = set cover vs blur vs other). Current component: `GallerySelectionActionsPopup.jsx`.
 - **Earlier same day (Gallery CMS)** — Shared album-sidebar collapse key; Arrange ≈ Media CMS chrome; long-press arrange drag; unsaved-order leave prompt; device photo/media cache; workspace header cleanup; auto first-image album cover.
 
 ## Do not casually change UI/UX
