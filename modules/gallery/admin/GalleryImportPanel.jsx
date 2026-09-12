@@ -251,11 +251,7 @@ export default function GalleryImportPanel({ controller, embedded = false }) {
       />
 
       {!embedded ? (
-        <GalleryPageHeader
-          eyebrow="Import Workflow"
-          title="Import"
-          description="Connect Drive, confirm a folder, then import into the selected album."
-        />
+        <GalleryPageHeader eyebrow="Import Workflow" title="Import" />
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">

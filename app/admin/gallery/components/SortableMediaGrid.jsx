@@ -18,10 +18,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
 import GalleryMediaCard from '@/modules/gallery/admin/cms/GalleryMediaCard';
-
-const TOUCH_MULTI_SELECT_DISTANCE = 14;
 
 const MOBILE_GRID_COL_CLASS = {
   2: 'grid-cols-2',
@@ -67,20 +64,10 @@ const SortableMediaCard = memo(function SortableMediaCard({
   isDropTarget,
   dragActive,
   onToggleSelect,
-  onSelectRange,
-  touchSelectStateRef,
-  suppressNextClickRef,
   onPreview,
   blurUnclothyGenerated,
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: photo.id,
     transition: {
       duration: 180,
@@ -91,6 +78,7 @@ const SortableMediaCard = memo(function SortableMediaCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: 'manipulation',
   };
 
   return (
@@ -101,89 +89,8 @@ const SortableMediaCard = memo(function SortableMediaCard({
       className={`group relative select-none will-change-transform ${
         isDragging ? 'z-20 opacity-30' : ''
       } ${isDropTarget ? 'z-10 scale-[1.01]' : ''}`}
-      onPointerDown={(event) => {
-        if (event.pointerType !== 'touch' || isDragging) return;
-        const target = event.target;
-        if (
-          target instanceof Element &&
-          target.closest(
-            'button,input,label,a,video,audio,[data-drag-handle],[data-gallery-select-toggle],[data-gallery-media-control]',
-          )
-        ) {
-          return;
-        }
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-        touchSelectStateRef.current = {
-          active: true,
-          activated: false,
-          pointerId: event.pointerId,
-          originPhotoId: photo.id,
-          lastPhotoId: photo.id,
-          startX: event.clientX,
-          startY: event.clientY,
-        };
-      }}
-      onPointerMove={(event) => {
-        const touchState = touchSelectStateRef.current;
-        if (
-          event.pointerType !== 'touch' ||
-          !touchState.active ||
-          touchState.pointerId !== event.pointerId
-        ) {
-          return;
-        }
-
-        if (!touchState.activated) {
-          const distanceX = event.clientX - touchState.startX;
-          const distanceY = event.clientY - touchState.startY;
-          if (Math.hypot(distanceX, distanceY) < TOUCH_MULTI_SELECT_DISTANCE) {
-            return;
-          }
-
-          touchState.activated = true;
-          suppressNextClickRef.current = true;
-          onSelectRange?.(touchState.originPhotoId, { resetAnchor: true });
-        }
-
-        event.preventDefault();
-
-        const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
-        const nextPhotoId = hoveredElement?.closest?.('[data-photo-id]')?.getAttribute('data-photo-id');
-        if (!nextPhotoId || nextPhotoId === touchSelectStateRef.current.lastPhotoId) return;
-        touchSelectStateRef.current.lastPhotoId = nextPhotoId;
-        onSelectRange?.(Number(nextPhotoId));
-      }}
-      onPointerUp={(event) => {
-        if (touchSelectStateRef.current.pointerId === event.pointerId) {
-          event.currentTarget.releasePointerCapture?.(event.pointerId);
-          const shouldSuppressClick = touchSelectStateRef.current.activated;
-          touchSelectStateRef.current = {
-            active: false,
-            activated: false,
-            pointerId: null,
-            originPhotoId: null,
-            lastPhotoId: null,
-            startX: 0,
-            startY: 0,
-          };
-          suppressNextClickRef.current = shouldSuppressClick;
-        }
-      }}
-      onPointerCancel={(event) => {
-        if (touchSelectStateRef.current.pointerId === event.pointerId) {
-          event.currentTarget.releasePointerCapture?.(event.pointerId);
-        }
-        touchSelectStateRef.current = {
-          active: false,
-          activated: false,
-          pointerId: null,
-          originPhotoId: null,
-          lastPhotoId: null,
-          startX: 0,
-          startY: 0,
-        };
-        suppressNextClickRef.current = false;
-      }}
+      {...attributes}
+      {...listeners}
     >
       {isDropTarget ? (
         <span
@@ -192,15 +99,7 @@ const SortableMediaCard = memo(function SortableMediaCard({
         />
       ) : null}
 
-      <div
-        className={dragActive && !isDragging ? 'rounded-xl border border-dashed border-slate-300 dark:border-slate-600' : ''}
-        onClickCapture={(event) => {
-          if (!suppressNextClickRef.current) return;
-          event.preventDefault();
-          event.stopPropagation();
-          suppressNextClickRef.current = false;
-        }}
-      >
+      <div className={dragActive && !isDragging ? 'rounded-xl border border-dashed border-slate-300 dark:border-slate-600' : ''}>
         <GalleryMediaCard
           photo={photo}
           selected={isSelected}
@@ -216,24 +115,6 @@ const SortableMediaCard = memo(function SortableMediaCard({
           }}
         />
       </div>
-
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        {...attributes}
-        {...listeners}
-        data-drag-handle
-        className={`absolute bottom-2 right-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition touch-none select-none ${
-          isDropTarget || dragActive
-            ? 'border-blue-300 bg-white text-blue-700 opacity-100 dark:border-blue-700 dark:bg-slate-950 dark:text-blue-200'
-            : 'border-slate-200 bg-white/95 text-slate-600 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-950/90 dark:text-slate-200'
-        }`}
-        onClick={(event) => event.stopPropagation()}
-        style={{ touchAction: 'none' }}
-        aria-label={`Drag to reorder ${photo.caption || `media ${photo.id}`}`}
-      >
-        <GripVertical className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }, (prevProps, nextProps) => (
@@ -248,16 +129,47 @@ const SortableMediaCard = memo(function SortableMediaCard({
   prevProps.onPreview === nextProps.onPreview
 ));
 
-const OverlayCard = memo(function OverlayCard({ photo, draggingCount, blurUnclothyGenerated }) {
+const OverlayCard = memo(function OverlayCard({ photo, stackPhotos = [], draggingCount = 1, blurUnclothyGenerated }) {
   if (!photo) return null;
+
+  const stack = (Array.isArray(stackPhotos) && stackPhotos.length > 0 ? stackPhotos : [photo]).slice(0, 3);
+  const showStack = stack.length > 1;
+  const stackOffsets = [
+    { x: 0, y: 0, rotate: 0, scale: 1 },
+    { x: 10, y: 8, rotate: 4, scale: 0.97 },
+    { x: 18, y: 14, rotate: -5, scale: 0.94 },
+  ];
+
   return (
-    <div className="relative w-[180px] scale-[1.03] sm:w-[200px]">
+    <div className={`relative w-[180px] scale-[1.03] sm:w-[200px] ${showStack ? 'pb-4 pr-4' : ''}`}>
       {draggingCount > 1 ? (
-        <span className="absolute -right-1 -top-1 z-10 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-semibold text-white shadow">
+        <span className="absolute -right-1 -top-1 z-30 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-900 px-1.5 text-[11px] font-semibold text-white shadow dark:bg-slate-50 dark:text-slate-900">
           {draggingCount}
         </span>
       ) : null}
-      <GalleryMediaCard photo={photo} selected blurUnclothyGenerated={blurUnclothyGenerated} />
+
+      {[...stack].reverse().map((stackPhoto, reverseIndex) => {
+        const indexFromFront = stack.length - 1 - reverseIndex;
+        const offset = stackOffsets[indexFromFront] || stackOffsets[0];
+        const isFront = indexFromFront === 0;
+
+        return (
+          <div
+            key={stackPhoto.id}
+            className={`${isFront ? 'relative z-20' : 'pointer-events-none absolute inset-0 z-10'} overflow-hidden rounded-xl shadow-lg`}
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) rotate(${offset.rotate}deg) scale(${offset.scale})`,
+              opacity: isFront ? 1 : Math.max(0.55, 0.85 - indexFromFront * 0.12),
+            }}
+          >
+            <GalleryMediaCard
+              photo={stackPhoto}
+              selected={isFront}
+              blurUnclothyGenerated={blurUnclothyGenerated}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 });
@@ -330,16 +242,6 @@ export default function SortableMediaGrid({
   const [previewItems, setPreviewItems] = useState(items);
   const previewItemsRef = useRef(items);
   const draggedIdsRef = useRef([]);
-  const touchSelectStateRef = useRef({
-    active: false,
-    activated: false,
-    pointerId: null,
-    originPhotoId: null,
-    lastPhotoId: null,
-    startX: 0,
-    startY: 0,
-  });
-  const suppressNextClickRef = useRef(false);
   const pointerPositionRef = useRef(null);
   const pointerVelocityRef = useRef({ x: 0, y: 0 });
   const lastPointerSampleRef = useRef({ x: 0, y: 0, time: 0 });
@@ -456,10 +358,10 @@ export default function SortableMediaGrid({
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      activationConstraint: { delay: 320, tolerance: 8 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 260, tolerance: 8 },
+      activationConstraint: { delay: 320, tolerance: 8 },
     }),
   );
 
@@ -467,6 +369,22 @@ export default function SortableMediaGrid({
     () => visibleItems.find((photo) => photo.id === activeId) ?? items.find((photo) => photo.id === activeId) ?? null,
     [visibleItems, items, activeId],
   );
+
+  const overlayStackPhotos = useMemo(() => {
+    if (!activePhoto) return [];
+    if (draggedIds.length <= 1) return [activePhoto];
+
+    const byId = new Map(items.map((photo) => [photo.id, photo]));
+    const stack = [activePhoto];
+    for (const id of draggedIds) {
+      if (id === activePhoto.id) continue;
+      const next = byId.get(id);
+      if (!next) continue;
+      stack.push(next);
+      if (stack.length >= 3) break;
+    }
+    return stack;
+  }, [activePhoto, draggedIds, items]);
 
   const handleDragStart = ({ active, activatorEvent }) => {
     const activePhotoId = active.id;
@@ -585,9 +503,6 @@ export default function SortableMediaGrid({
               isDropTarget={overId === photo.id && !draggedSet.has(photo.id)}
               dragActive={dragActive}
               onToggleSelect={onToggleSelect}
-              onSelectRange={onSelectRange}
-              touchSelectStateRef={touchSelectStateRef}
-              suppressNextClickRef={suppressNextClickRef}
               onPreview={onPreview}
               blurUnclothyGenerated={blurUnclothyGenerated}
             />
@@ -598,6 +513,7 @@ export default function SortableMediaGrid({
       <DragOverlay dropAnimation={dropAnimation} zIndex={70}>
         <OverlayCard
           photo={activePhoto}
+          stackPhotos={overlayStackPhotos}
           draggingCount={draggedIds.length}
           blurUnclothyGenerated={blurUnclothyGenerated}
         />

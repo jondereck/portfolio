@@ -13,6 +13,7 @@ export default function ConfirmModal({
   loading = false,
   destructive = false,
   onConfirm,
+  onCancel,
   children,
   acknowledgementLabel = '',
   acknowledgementRequired = false,
@@ -111,7 +112,13 @@ export default function ConfirmModal({
                   type="button"
                   className="inline-flex h-12 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-900/60 sm:w-auto"
                   disabled={loading}
-                  onClick={() => onOpenChange?.(false)}
+                  onClick={() => {
+                    if (typeof onCancel === 'function') {
+                      onCancel();
+                      return;
+                    }
+                    onOpenChange?.(false);
+                  }}
                 >
                   {cancelLabel}
                 </button>

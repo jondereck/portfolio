@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getVideoPosterUrl, isPhotoAudio, isPhotoVideo, shouldBlurPhoto } from '@/lib/gallery-media';
+import { MEDIA_PROTECT_IMAGE_PROPS } from '@/lib/media-protect';
 import { useLoadingStore } from '@/store/loading';
 
 const GALLERY_VIEW_STORAGE_KEY = 'private-gallery-view';
@@ -28,10 +29,10 @@ const normalizeGalleryView = (value) => (value === 'compact' ? 'compact' : 'cine
 const VideoPoster = ({ src, alt, className, fallbackClassName }) => {
   const posterSrc = getVideoPosterUrl(src);
   if (!posterSrc) {
-    return <div className={fallbackClassName} />;
+    return <div className={fallbackClassName} role="img" aria-label={alt || 'Video'} {...MEDIA_PROTECT_IMAGE_PROPS} />;
   }
 
-  return <img src={posterSrc} alt={alt} className={className} />;
+  return <img src={posterSrc} alt={alt} className={className} {...MEDIA_PROTECT_IMAGE_PROPS} />;
 };
 
 const AlbumCover = ({ photo, alt, className, fallbackClassName, blurUnclothyGenerated = true }) => {
@@ -61,7 +62,7 @@ const AlbumCover = ({ photo, alt, className, fallbackClassName, blurUnclothyGene
 
   return (
     <>
-      <img src={src} alt={alt} className={joinClassNames(className, shouldBlur ? 'blur-md' : '')} />
+      <img src={src} alt={alt} className={joinClassNames(className, shouldBlur ? 'blur-md' : '')} {...MEDIA_PROTECT_IMAGE_PROPS} />
       {shouldBlur ? (
         <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/25 bg-black/55 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
           NSFW

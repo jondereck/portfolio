@@ -12,6 +12,11 @@ import {
   getUploadSummaryToast,
   uploadAlbumFiles,
 } from './galleryUploadBatch';
+import {
+  readCachedAlbumPhotos,
+  warmAlbumMediaCache,
+  writeCachedAlbumPhotos,
+} from './galleryPhotosCache';
 
 const galleryAdminSelectedAlbumStorageKey = 'galleryAdminSelectedAlbumId';
 
@@ -43,6 +48,7 @@ export function useGalleryAdminController() {
   const preserveSelectionOnNextPhotoSyncRef = useRef(false);
   const photosRef = useRef([]);
   const loadedAlbumIdRef = useRef(null);
+  const arrangeLeaveGuardRef = useRef(null);
   photosRef.current = photos;
 
   const [loadingAlbums, setLoadingAlbums] = useState(true);
@@ -157,16 +163,33 @@ export function useGalleryAdminController() {
       return;
     }
 
+    const sortKey = nextSort || 'custom';
     const isSameAlbumRefresh = loadedAlbumIdRef.current === albumId && photosRef.current.length > 0;
+
+    // Instant paint from device cache, then revalidate in the background.
     if (!isSameAlbumRefresh) {
-      setLoadingPhotos(true);
+      const cachedPhotos = await readCachedAlbumPhotos(albumId, sortKey);
+      if (Array.isArray(cachedPhotos) && cachedPhotos.length > 0) {
+        setPhotos(cachedPhotos);
+        loadedAlbumIdRef.current = albumId;
+        setLoadingPhotos(false);
+        void warmAlbumMediaCache(cachedPhotos);
+      } else {
+        setLoadingPhotos(true);
+      }
     }
+
     try {
-      const data = await fetchJson(`/api/gallery/albums/${albumId}/photos?sort=${nextSort}`);
-      setPhotos(Array.isArray(data?.photos) ? data.photos : []);
+      const data = await fetchJson(`/api/gallery/albums/${albumId}/photos?sort=${sortKey}`);
+      const nextPhotos = Array.isArray(data?.photos) ? data.photos : [];
+      setPhotos(nextPhotos);
       loadedAlbumIdRef.current = albumId;
+      void writeCachedAlbumPhotos(albumId, sortKey, nextPhotos);
+      void warmAlbumMediaCache(nextPhotos);
     } catch (error) {
-      toast.error(error.message);
+      if (photosRef.current.length === 0 || loadedAlbumIdRef.current !== albumId) {
+        toast.error(error.message);
+      }
     } finally {
       setLoadingPhotos(false);
     }
@@ -935,11 +958,25 @@ export function useGalleryAdminController() {
     markOrderDirtyFromItems(last);
   };
 
+  const discardUnsavedOrder = async () => {
+    if (!selectedAlbumId) {
+      setOrderDirty(false);
+      setOrderHistory([]);
+      setDragSnapshotTaken(false);
+      return;
+    }
+
+    await loadPhotos(selectedAlbumId, 'custom');
+    setOrderDirty(false);
+    setOrderHistory([]);
+    setDragSnapshotTaken(false);
+  };
+
   const saveOrder = async () => {
-    if (!selectedAlbumId) return;
+    if (!selectedAlbumId) return false;
     if (!orderDirty) {
       toast.message('Order is already saved.');
-      return;
+      return true;
     }
 
     setOrderSaving(true);
@@ -955,9 +992,12 @@ export function useGalleryAdminController() {
       setSortMode('custom');
       setOrderDirty(false);
       setOrderHistory([]);
+      void writeCachedAlbumPhotos(selectedAlbumId, 'custom', arrangePhotos);
+      return true;
     } catch (error) {
       toast.error(error.message);
       await loadPhotos(selectedAlbumId, 'custom');
+      return false;
     } finally {
       setOrderSaving(false);
     }
@@ -982,6 +1022,21 @@ export function useGalleryAdminController() {
   const selectAlbum = (albumId) => {
     persistSelectedAlbumId(albumId);
     setSelectedAlbumId(albumId);
+  };
+
+  const registerArrangeLeaveGuard = (guard) => {
+    arrangeLeaveGuardRef.current = typeof guard === 'function' ? guard : null;
+  };
+
+  const requestArrangeLeave = (action) => {
+    if (typeof action !== 'function') return;
+
+    if (orderDirty && typeof arrangeLeaveGuardRef.current === 'function') {
+      arrangeLeaveGuardRef.current(action);
+      return;
+    }
+
+    action();
   };
 
   const activeAlbumMediaLabel = selectedAlbum
@@ -1051,7 +1106,10 @@ export function useGalleryAdminController() {
     moveSelection,
     selectPhotoRange,
     undoOrder,
+    discardUnsavedOrder,
     saveOrder,
+    registerArrangeLeaveGuard,
+    requestArrangeLeave,
     handleDragStateChange,
     getPhotoSortTime,
   };

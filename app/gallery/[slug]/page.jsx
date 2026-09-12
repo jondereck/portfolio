@@ -13,6 +13,7 @@ import {
   isPhotoVideo,
   shouldBlurPhoto,
 } from "@/lib/gallery-media";
+import { MEDIA_PROTECT_ELEMENT_PROPS, MEDIA_PROTECT_IMAGE_PROPS } from "@/lib/media-protect";
 import GalleryMediaFilterModal from "@/modules/gallery/admin/cms/GalleryMediaFilterModal";
 import {
   VIEWER_MODES,
@@ -27,7 +28,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudUpload,
-  Download,
   Folder,
   History,
   Music2,
@@ -69,37 +69,9 @@ const formatDate = (value) => {
 
 const VideoPoster = ({ src, alt, className, fallbackClassName }) => {
   const posterSrc = getVideoPosterUrl(src);
-  const [showVideoFallback, setShowVideoFallback] = useState(!posterSrc);
 
-  useEffect(() => {
-    setShowVideoFallback(!posterSrc);
-  }, [posterSrc, src]);
-
-  if (showVideoFallback) {
-    const playableSrc = getPlayableMediaUrl(src);
-    if (!playableSrc) {
-      return <div className={fallbackClassName} />;
-    }
-
-    return (
-      <video
-        src={playableSrc}
-        className={className}
-        muted
-        playsInline
-        preload="metadata"
-        onLoadedMetadata={(event) => {
-          const player = event.currentTarget;
-          if (Number.isFinite(player.duration) && player.duration > 0.12) {
-            try {
-              player.currentTime = Math.min(0.1, player.duration / 2);
-            } catch {
-              // ignore poster seek failures; the browser can still render the first frame
-            }
-          }
-        }}
-      />
-    );
+  if (!posterSrc) {
+    return <div className={fallbackClassName || className} role="img" aria-label={alt || "Video"} {...MEDIA_PROTECT_IMAGE_PROPS} />;
   }
 
   return (
@@ -107,9 +79,7 @@ const VideoPoster = ({ src, alt, className, fallbackClassName }) => {
       src={posterSrc}
       alt={alt}
       className={className}
-      onError={() => {
-        setShowVideoFallback(true);
-      }}
+      {...MEDIA_PROTECT_IMAGE_PROPS}
     />
   );
 };
@@ -746,6 +716,7 @@ const SplitPanelMediaSurface = ({
                     poster={
                       getVideoPosterUrl(layerItem?.imageUrl) || undefined
                     }
+                    {...MEDIA_PROTECT_ELEMENT_PROPS}
                     onLoadedMetadata={() => {
                       if (layer.phase === "loading" || layer.phase === "center") {
                         promoteLayer(layer.layerKey);
@@ -801,6 +772,7 @@ const SplitPanelMediaSurface = ({
                     alt={layerItem?.caption || `Photo ${layerItem?.id}`}
                     className="h-full w-full object-contain"
                     decoding="async"
+                    {...MEDIA_PROTECT_IMAGE_PROPS}
                     onLoad={() => {
                       promoteLayer(layer.layerKey);
                       onMediaSuccess(layerItem);
@@ -997,7 +969,6 @@ export default function AlbumDetailPage({ params }) {
   const [error, setError] = useState("");
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
   const [isAlbumDownloadPending, setIsAlbumDownloadPending] = useState(false);
-  const [downloadingPhotoId, setDownloadingPhotoId] = useState(null);
   const [audioPlayerOpen, setAudioPlayerOpen] = useState(false);
   const [currentAudioTrackIndex, setCurrentAudioTrackIndex] = useState(0);
   const [audioIsPlaying, setAudioIsPlaying] = useState(false);
@@ -1271,44 +1242,6 @@ export default function AlbumDetailPage({ params }) {
       );
     } finally {
       setIsAlbumDownloadPending(false);
-    }
-  }, [accessMode, album, shareToken]);
-
-  const handleDownloadMedia = useCallback(async (photo) => {
-    if (accessMode === "public") {
-      toast.error("Downloads are disabled for public viewers.");
-      return;
-    }
-    if (!album?.id || !photo?.id) {
-      return;
-    }
-
-    setDownloadingPhotoId(photo.id);
-    const label = photo.caption || `Media ${photo.id}`;
-    const toastId = toast.loading(`Preparing ${label}...`);
-    try {
-      const downloadUrl = new URL(
-        `/api/gallery/albums/${album.id}/photos/${photo.id}/download`,
-        window.location.origin,
-      );
-      if (shareToken) {
-        downloadUrl.searchParams.set("share", shareToken);
-      }
-
-      const result = await downloadFromApi(
-        `${downloadUrl.pathname}${downloadUrl.search}`,
-        `${label}.bin`,
-      );
-      toast.success(`Downloaded ${result.filename}.`, { id: toastId });
-    } catch (downloadError) {
-      toast.error(
-        downloadError instanceof Error
-          ? downloadError.message
-          : "Media download failed.",
-        { id: toastId },
-      );
-    } finally {
-      setDownloadingPhotoId((current) => (current === photo.id ? null : current));
     }
   }, [accessMode, album, shareToken]);
 
@@ -3872,6 +3805,7 @@ export default function AlbumDetailPage({ params }) {
                 muted
                 playsInline
                 preload="auto"
+                {...MEDIA_PROTECT_ELEMENT_PROPS}
                 // Keep the element attached so the browser can keep buffering
                 // the next Drive clip before the user advances.
                 onLoadedData={(event) => {
@@ -3913,20 +3847,6 @@ export default function AlbumDetailPage({ params }) {
                   : `${activeIndex + 1} / ${filteredPhotos.length} · ${activeItem.caption || "Untitled media"}`}
               </p>
               <div className="flex items-center gap-2">
-                {accessMode !== "public" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleDownloadMedia(activeItem);
-                    }}
-                    disabled={downloadingPhotoId === activeItem.id}
-                    aria-label="Download media"
-                    title="Download media"
-                    className="inline-flex h-8 items-center justify-center rounded-md border border-white/25 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {downloadingPhotoId === activeItem.id ? "..." : "Download"}
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   onClick={() => {
@@ -4122,6 +4042,7 @@ export default function AlbumDetailPage({ params }) {
                     preload="auto"
                     poster={getVideoPosterUrl(activeItem.imageUrl) || undefined}
                     style={{ touchAction: hideUI ? "none" : "manipulation" }}
+                    {...MEDIA_PROTECT_ELEMENT_PROPS}
                     onLoadedMetadata={() => {
                       markPanelMediaSuccess("primary", activeItem);
                     }}
@@ -4190,7 +4111,10 @@ export default function AlbumDetailPage({ params }) {
                     }`}
                     style={{
                       transform: `translate3d(${imageZoom.x}px, ${imageZoom.y}px, 0) scale(${imageZoom.scale})`,
+                      ...MEDIA_PROTECT_IMAGE_PROPS.style,
                     }}
+                    draggable={false}
+                    onContextMenu={MEDIA_PROTECT_IMAGE_PROPS.onContextMenu}
                     onLoad={() => {
                       markPanelMediaSuccess("primary", activeItem);
                     }}
@@ -5189,20 +5113,6 @@ export default function AlbumDetailPage({ params }) {
                     : `${activeIndex + 1} / ${filteredPhotos.length} · ${activeItem.caption || "Untitled media"}`}
                 </p>
                 <div className="flex items-center gap-2">
-                  {accessMode !== "public" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleDownloadMedia(activeItem);
-                      }}
-                      disabled={downloadingPhotoId === activeItem.id}
-                      aria-label="Download media"
-                      title="Download media"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/25 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                  ) : null}
                   <button
                     type="button"
                     onClick={() => {

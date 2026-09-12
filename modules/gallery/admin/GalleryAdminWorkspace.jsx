@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import GalleryAlbumsPanel from '@/modules/gallery/admin/GalleryAlbumsPanel';
 import GalleryArrangePanel from '@/modules/gallery/admin/GalleryArrangePanel';
@@ -8,7 +8,6 @@ import GalleryMediaPanel from '@/modules/gallery/admin/GalleryMediaPanel';
 import GalleryMobileWorkspaceNav from '@/modules/gallery/admin/GalleryMobileWorkspaceNav';
 import { useGalleryAdminController } from '@/modules/gallery/admin/useGalleryAdminController';
 import { normalizeGalleryWorkspaceTab } from '@/modules/gallery/admin/workspaceConfig';
-import { GalleryPageHeader } from './galleryAdminShared';
 
 const workspaceTabCards = [
   {
@@ -65,6 +64,7 @@ export default function GalleryAdminWorkspace({ initialTab = 'albums' }) {
   const searchParams = useSearchParams();
 
   const activeTab = normalizeGalleryWorkspaceTab(searchParams?.get('tab') ?? initialTab);
+  const { orderDirty, requestArrangeLeave } = controller;
 
   useEffect(() => {
     const currentTab = searchParams?.get('tab');
@@ -79,17 +79,24 @@ export default function GalleryAdminWorkspace({ initialTab = 'albums' }) {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [initialTab, pathname, router, searchParams]);
 
-  const setActiveTab = (nextTab) => {
+  const navigateToTab = (nextTab) => {
     const normalizedTab = normalizeGalleryWorkspaceTab(nextTab);
     const params = new URLSearchParams(searchParams?.toString());
     params.set('tab', normalizedTab);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const activeTabLabel = useMemo(
-    () => workspaceTabCards.find((tab) => tab.id === activeTab)?.label ?? 'Albums',
-    [activeTab],
-  );
+  const setActiveTab = (nextTab) => {
+    const normalizedTab = normalizeGalleryWorkspaceTab(nextTab);
+    if (normalizedTab === activeTab) return;
+
+    if (activeTab === 'arrange' && orderDirty) {
+      requestArrangeLeave(() => navigateToTab(normalizedTab));
+      return;
+    }
+
+    navigateToTab(normalizedTab);
+  };
 
   const sharedProps = { controller, embedded: true };
 
@@ -104,12 +111,6 @@ export default function GalleryAdminWorkspace({ initialTab = 'albums' }) {
 
   return (
     <div className="space-y-4">
-      <GalleryPageHeader
-        eyebrow="Advanced Workspace"
-        title="Gallery Workspace"
-        description={`Work across albums, media, and arrange from one route. Current section: ${activeTabLabel}.`}
-      />
-
       <GalleryMobileWorkspaceNav
         tabs={workspaceTabCards}
         activeTab={activeTab}

@@ -129,6 +129,7 @@ export async function GET(request: Request, context: RouteContext) {
     const headers = new Headers();
     const contentType = response.headers.get('content-type') || photo.mimeType || 'application/octet-stream';
     headers.set('Content-Type', contentType);
+    headers.set('Content-Disposition', 'inline');
     // Allow short private browser cache so slideshow prefetch / next-slide hits
     // do not re-download the same Drive file on every advance.
     headers.set('Cache-Control', 'private, max-age=3600, stale-while-revalidate=86400');

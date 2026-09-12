@@ -154,7 +154,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
   const [pendingPreviewTask, setPendingPreviewTask] = useState(null);
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
   const [mediaPage, setMediaPage] = useState(1);
-  const [mediaPageSize, setMediaPageSize] = useState(48);
+  const [mediaPageSize, setMediaPageSize] = useState(24);
   const [mediaGridColumns, setMediaGridColumns] = useState(4);
   const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
   const mediaScrollRef = useRef({ windowY: 0, mainTop: 0 });
@@ -873,7 +873,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
                           value={mediaPageSize}
                           onChange={(event) => {
                             const nextSize = Number(event.target.value);
-                            setMediaPageSize(Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 48);
+                            setMediaPageSize(Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 24);
                             setMediaPage(1);
                           }}
                           className="h-10 rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"

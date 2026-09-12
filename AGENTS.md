@@ -13,6 +13,18 @@ This repo uses **Graphify**. A built graph lives under `graphify-out/` (especial
 
 Goal: **save tokens** by asking the graph first instead of re-discovering the codebase every time.
 
+## Dev log (keep current)
+
+**Agents must update this section** at the end of any meaningful change set (feature, fix, UX tweak, API behavior). Newest entries first. Keep each entry short: date · what · why/impact · key paths. Do not invent history; only log work that landed in the session.
+
+### 2026-09-12
+
+- **Admin collapsed sidebar logo** — Collapsed desktop sidebar shows `/jdn_logo.png` (click to expand) instead of hamburger; skeleton matched. `components/admin/navigation/CollapsibleSidebar.jsx`, `AdminSidebarSkeleton.jsx`.
+- **Media per-page default 24** — Gallery Media “Per page” default/fallback is 24 (was 48). `modules/gallery/admin/GalleryMediaPanel.jsx`.
+- **Single-media download blocked** — Only album ZIP download remains. Per-photo download API returns 403; Download buttons removed from gallery viewer + admin media viewer. Thumbnails avoid `<video src>` (poster/placeholder) to reduce IDM overlays; playback/media proxies use protect attrs + `Content-Disposition: inline`. Key: `app/api/gallery/albums/[id]/photos/[photoId]/download/route.ts`, `lib/media-protect.js`, `MediaPreview.jsx`, `app/gallery/[slug]/page.jsx`, `GalleryMediaViewer.jsx`, Drive/media proxy routes.
+- **Selection bar redesign (web)** — User provided compact floating bar reference (count · “media selected” / “Add to album” · album dropdown · icon actions · X). **Not implemented yet**; awaiting icon mapping (esp. first image button = set cover vs blur vs other). Current component: `GallerySelectionActionsPopup.jsx`.
+- **Earlier same day (Gallery CMS)** — Shared album-sidebar collapse key; Arrange ≈ Media CMS chrome; long-press arrange drag; unsaved-order leave prompt; device photo/media cache; workspace header cleanup; auto first-image album cover.
+
 ## Do not casually change UI/UX
 
 Existing admin Control Center visuals are intentional product design. **Do not redesign, restyle, or “simplify” established patterns unless the user explicitly asks.**
@@ -47,3 +59,5 @@ Admin surfaces under `/admin` must stay **mobile-first responsive** and **compac
 - Preserve Gallery’s mobile tabs, sticky actions, and sheets.
 - Align density with admin tokens; do not replace the three-pane desktop CMS model.
 - Keep Gallery compact: no extra helper sentences on workspace section cards, Drive picker rows, or import steps.
+- **Album download only** — Public/admin gallery must not offer per-item media download; album ZIP is the supported path.
+- **Web selection chrome** — When restyling selection actions on desktop/web, match the compact floating bar reference (count badge, album dropdown, icon actions) unless the user specifies otherwise.

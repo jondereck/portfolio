@@ -149,9 +149,13 @@ export function GalleryPageHeader({ eyebrow, title, description, actions }) {
     <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs">{eyebrow}</p>
+          {eyebrow ? (
+            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500 sm:text-xs">{eyebrow}</p>
+          ) : null}
           <h1 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50 sm:text-2xl">{title}</h1>
-          <p className="max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+          {description ? (
+            <p className="max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
+          ) : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>

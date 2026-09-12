@@ -341,11 +341,7 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
       </GalleryCmsModal>
 
       {!embedded ? (
-        <GalleryPageHeader
-          eyebrow="Album Management"
-          title="Albums"
-          description="Create, select, publish, and remove albums with a cleaner workspace."
-        />
+        <GalleryPageHeader eyebrow="Album Management" title="Albums" />
       ) : null}
 
       <GalleryCmsShell

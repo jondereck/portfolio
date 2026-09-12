@@ -15,19 +15,23 @@ export default function AdminSidebarSkeleton({ collapsed = false }) {
     >
       <div className="flex h-full flex-col">
         <div
-          className={`flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 ${
-            collapsed ? 'px-3' : ''
+          className={`flex items-center border-b border-slate-200 px-4 py-4 dark:border-slate-800 ${
+            collapsed ? 'justify-center px-3' : 'justify-between gap-3'
           }`}
         >
           {collapsed ? (
-            <div className="sr-only">Admin Control Center</div>
-          ) : (
-            <div className="min-w-0">
-              <Skeleton className="h-3 w-[9.5rem]" />
-              <Skeleton className="mt-2 h-4 w-24" />
+            <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+              <Skeleton className="h-7 w-7 rounded-md" />
             </div>
+          ) : (
+            <>
+              <div className="min-w-0">
+                <Skeleton className="h-3 w-[9.5rem]" />
+                <Skeleton className="mt-2 h-4 w-24" />
+              </div>
+              <Skeleton className="h-10 w-10 shrink-0 rounded-2xl" />
+            </>
           )}
-          <Skeleton className="h-10 w-10 shrink-0 rounded-2xl" />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">

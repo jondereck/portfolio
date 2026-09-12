@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ConfirmModal from '@/components/ConfirmModal';
 import SortableMediaGrid from '@/app/admin/gallery/components/SortableMediaGrid';
 import GalleryArrangeMobileControls from '@/modules/gallery/admin/GalleryArrangeMobileControls';
@@ -75,6 +75,7 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
     selectPhotoRange,
     moveSelection,
     undoOrder,
+    discardUnsavedOrder,
     saveOrder,
     handleDragStateChange,
     loadPhotos,
@@ -102,6 +103,73 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
   const [isDesktop, setIsDesktop] = useState(false);
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
   const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
+  const [leavePromptOpen, setLeavePromptOpen] = useState(false);
+  const [leaveSaving, setLeaveSaving] = useState(false);
+  const pendingLeaveActionRef = useRef(null);
+
+  const requestLeave = useCallback(
+    (action) => {
+      if (typeof action !== 'function') return;
+
+      if (!orderDirty) {
+        action();
+        return;
+      }
+
+      pendingLeaveActionRef.current = action;
+      setLeavePromptOpen(true);
+    },
+    [orderDirty],
+  );
+
+  const clearPendingLeave = useCallback(() => {
+    pendingLeaveActionRef.current = null;
+    setLeavePromptOpen(false);
+    setLeaveSaving(false);
+  }, []);
+
+  const runPendingLeave = useCallback(() => {
+    const action = pendingLeaveActionRef.current;
+    pendingLeaveActionRef.current = null;
+    setLeavePromptOpen(false);
+    setLeaveSaving(false);
+    action?.();
+  }, []);
+
+  const handleSaveAndLeave = useCallback(async () => {
+    setLeaveSaving(true);
+    const saved = await saveOrder();
+    if (!saved) {
+      setLeaveSaving(false);
+      return;
+    }
+    runPendingLeave();
+  }, [runPendingLeave, saveOrder]);
+
+  const handleDiscardAndLeave = useCallback(async () => {
+    setLeaveSaving(true);
+    await discardUnsavedOrder();
+    runPendingLeave();
+  }, [discardUnsavedOrder, runPendingLeave]);
+
+  useEffect(() => {
+    if (!orderDirty) return undefined;
+
+    const onBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [orderDirty]);
+
+  useEffect(() => {
+    if (typeof controller?.registerArrangeLeaveGuard !== 'function') return undefined;
+
+    controller.registerArrangeLeaveGuard(requestLeave);
+    return () => controller.registerArrangeLeaveGuard(null);
+  }, [controller, requestLeave]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
@@ -350,6 +418,24 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
         ) : null}
       </ConfirmModal>
 
+      <ConfirmModal
+        open={leavePromptOpen}
+        onOpenChange={(open) => {
+          if (!open) clearPendingLeave();
+        }}
+        title="Save arrangement?"
+        description="You have unsaved order changes. Save before leaving, or discard them."
+        confirmLabel="Save"
+        cancelLabel="Don't save"
+        loading={leaveSaving || orderSaving}
+        onConfirm={() => {
+          void handleSaveAndLeave();
+        }}
+        onCancel={() => {
+          void handleDiscardAndLeave();
+        }}
+      />
+
       <GalleryCreateAlbumModal
         open={createAlbumOpen}
         onOpenChange={setCreateAlbumOpen}
@@ -409,8 +495,14 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
             selectedAlbumId={selectedAlbumId}
             loadingAlbums={loadingAlbums}
             onSelectAlbum={(albumId) => {
-              setSelectedAlbumId(albumId);
-              setAlbumSwitchOpen(false);
+              if (albumId === selectedAlbumId) {
+                setAlbumSwitchOpen(false);
+                return;
+              }
+              requestLeave(() => {
+                setSelectedAlbumId(albumId);
+                setAlbumSwitchOpen(false);
+              });
             }}
             onCreateAlbumClick={() => setCreateAlbumOpen(true)}
             mobileAlbumName={selectedAlbum?.name}
@@ -623,8 +715,14 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
         albums={albums}
         selectedAlbumId={selectedAlbumId}
         onConfirm={(albumId) => {
-          setSelectedAlbumId(albumId);
-          setAlbumSwitchOpen(false);
+          if (albumId === selectedAlbumId) {
+            setAlbumSwitchOpen(false);
+            return;
+          }
+          requestLeave(() => {
+            setSelectedAlbumId(albumId);
+            setAlbumSwitchOpen(false);
+          });
         }}
         onCreateNew={() => setCreateAlbumOpen(true)}
       />

@@ -23,7 +23,6 @@ import GalleryUnclothySection from './GalleryUnclothySection';
 import { isPhotoVideo, shouldBlurPhoto } from '@/lib/gallery-media';
 import { fetchJson } from './galleryAdminShared';
 import { useUnclothyTasksStore } from '@/store/unclothyTasks';
-import { downloadFromApi } from '@/lib/download-client';
 
 const SAMSUNG_STATUS_STEPS = ['Queued', 'Processing', 'Generating', 'Finalizing'];
 const DEFAULT_VIDEO_STATE = {
@@ -48,12 +47,6 @@ function createSnapshotFilename(photo) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 80) || 'video-snapshot';
   return `${safeBase}-snapshot-${Date.now()}.png`;
-}
-
-function createMediaFallbackFilename(photo) {
-  const base = photo?.caption || photo?.originalFilename || `media-${photo?.id || 'download'}`;
-  const safeBase = String(base).trim() || `media-${photo?.id || 'download'}`;
-  return /\.[a-z0-9]{2,8}$/i.test(safeBase) ? safeBase : `${safeBase}.bin`;
 }
 
 function normalizeAlbumId(value) {
@@ -117,12 +110,10 @@ export default function GalleryMediaViewer({
     normalizeAlbumId(album?.id) ??
     normalizeAlbumId(controller?.selectedAlbumId);
   const snapshotAlbumId = mediaAlbumId;
-  const canDownload = Boolean(photo?.id) && Boolean(mediaAlbumId);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [snapshot, setSnapshot] = useState(null);
   const [capturingSnapshot, setCapturingSnapshot] = useState(false);
   const [uploadingSnapshot, setUploadingSnapshot] = useState(false);
-  const [downloadingMedia, setDownloadingMedia] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [unclothyAvailable, setUnclothyAvailable] = useState(false);
   const generateSheetRef = useRef(null);
@@ -748,28 +739,6 @@ export default function GalleryMediaViewer({
     clearSnapshot();
   };
 
-  const handleDownloadMedia = async () => {
-    if (!photo?.id || !mediaAlbumId) {
-      toast.error('Media download is unavailable.');
-      return;
-    }
-
-    setDownloadingMedia(true);
-    const label = photo.caption || `Media ${photo.id}`;
-    const toastId = toast.loading(`Preparing ${label}...`);
-    try {
-      const result = await downloadFromApi(
-        `/api/gallery/albums/${mediaAlbumId}/photos/${photo.id}/download`,
-        createMediaFallbackFilename(photo),
-      );
-      toast.success(`Downloaded ${result.filename}.`, { id: toastId });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Media download failed.', { id: toastId });
-    } finally {
-      setDownloadingMedia(false);
-    }
-  };
-
   const handleUploadSnapshot = async () => {
     if (!snapshot?.blob || !snapshotAlbumId) {
       toast.error('Select an album before uploading the snapshot.');
@@ -1322,7 +1291,7 @@ export default function GalleryMediaViewer({
                 </div>
 
                 <div className="border-t border-slate-200 bg-white px-2 py-1.5 pb-[calc(0.375rem_+_env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950 sm:hidden">
-                  {canOpenGenerate || canSnapshot || canDownload ? (
+                  {canOpenGenerate || canSnapshot ? (
                     <div className="flex items-center gap-2">
                       {canSnapshot ? (
                         <button
@@ -1335,19 +1304,6 @@ export default function GalleryMediaViewer({
                         >
                           {capturingSnapshot ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
                           <span className="sr-only">Snapshot</span>
-                        </button>
-                      ) : null}
-                      {canDownload ? (
-                        <button
-                          type="button"
-                          className="inline-flex h-11 min-w-[44px] flex-1 items-center justify-center rounded-xl border border-slate-300 text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:ring-slate-100 dark:focus-visible:ring-offset-slate-950"
-                          onClick={handleDownloadMedia}
-                          disabled={downloadingMedia}
-                          aria-label="Download media"
-                          title="Download"
-                        >
-                          {downloadingMedia ? <Loader2 className="size-5 animate-spin" /> : <Download className="size-5" />}
-                          <span className="sr-only">Download</span>
                         </button>
                       ) : null}
                       {canOpenGenerate ? (

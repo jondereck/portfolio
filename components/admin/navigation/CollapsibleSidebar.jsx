@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, Transition } from '@headlessui/react';
 import {
   Compass,
@@ -21,6 +22,8 @@ import {
 } from 'lucide-react';
 import { Fragment } from 'react';
 import { getAvatarInitials } from '@/lib/auth/avatar-display';
+
+const ADMIN_BRAND_LOGO_SRC = '/jdn_logo.png';
 
 const iconMap = {
   layoutDashboard: LayoutDashboard,
@@ -61,30 +64,50 @@ export default function CollapsibleSidebar({
       }`}
     >
       <div className="flex h-full flex-col">
-        <div className={`flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 ${collapsed ? 'px-3' : ''}`}>
+        <div
+          className={`flex items-center border-b border-slate-200 px-4 py-4 dark:border-slate-800 ${
+            collapsed ? 'justify-center px-3' : 'justify-between gap-3'
+          }`}
+        >
           {collapsed ? (
-            <div className="sr-only">
-              <p>{brandKicker}</p>
-              <p>{brandTitle}</p>
-            </div>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+            >
+              <Image
+                src={ADMIN_BRAND_LOGO_SRC}
+                alt=""
+                width={28}
+                height={28}
+                className="h-7 w-7 object-contain"
+                priority
+              />
+            </button>
           ) : (
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {brandKicker}
-              </p>
-              <h2 className="mt-1 truncate text-base font-bold text-slate-900 dark:text-slate-50">{brandTitle}</h2>
-            </div>
-          )}
+            <>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  {brandKicker}
+                </p>
+                {brandTitle ? (
+                  <h2 className="mt-1 truncate text-base font-bold text-slate-900 dark:text-slate-50">{brandTitle}</h2>
+                ) : null}
+              </div>
 
-          <button
-            type="button"
-            onClick={onToggle}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <MenuIcon className="size-4" />
-          </button>
+              <button
+                type="button"
+                onClick={onToggle}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar"
+              >
+                <MenuIcon className="size-4" />
+              </button>
+            </>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">

@@ -76,10 +76,8 @@ export async function GET(request: Request, context: RouteContext) {
       headers.set('Content-Range', contentRange);
     }
 
-    const disposition = response.headers.get('content-disposition');
-    if (disposition) {
-      headers.set('Content-Disposition', disposition);
-    }
+    // Always inline for preview/playback — never hint attachment (blocks casual save/IDM).
+    headers.set('Content-Disposition', 'inline');
 
     return new Response(response.body, {
       status: response.status === 206 ? 206 : 200,
