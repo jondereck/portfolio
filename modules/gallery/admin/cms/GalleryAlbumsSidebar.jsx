@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
@@ -46,13 +46,32 @@ export default function GalleryAlbumsSidebar({
 
   const pageSize = 10;
   const [pageIndex, setPageIndex] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(resolvedAlbums.length / pageSize));
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredAlbums = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return resolvedAlbums;
+
+    return resolvedAlbums.filter((album) => {
+      const haystack = [album?.name, album?.slug, album?.description]
+        .map((value) => (typeof value === 'string' ? value.toLowerCase() : ''))
+        .filter(Boolean)
+        .join(' ');
+      return haystack.includes(query);
+    });
+  }, [resolvedAlbums, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAlbums.length / pageSize));
 
   useEffect(() => {
-    const activeIndex = resolvedAlbums.findIndex((album) => album.id === selectedAlbumId);
+    setPageIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const activeIndex = filteredAlbums.findIndex((album) => album.id === selectedAlbumId);
     if (activeIndex === -1) return;
     setPageIndex(Math.floor(activeIndex / pageSize));
-  }, [resolvedAlbums, selectedAlbumId]);
+  }, [filteredAlbums, selectedAlbumId]);
 
   useEffect(() => {
     setPageIndex((current) => Math.min(current, Math.max(totalPages - 1, 0)));
@@ -60,8 +79,8 @@ export default function GalleryAlbumsSidebar({
 
   const visibleAlbums = useMemo(() => {
     const start = pageIndex * pageSize;
-    return resolvedAlbums.slice(start, start + pageSize);
-  }, [pageIndex, pageSize, resolvedAlbums]);
+    return filteredAlbums.slice(start, start + pageSize);
+  }, [filteredAlbums, pageIndex, pageSize]);
 
   const canGoPrev = pageIndex > 0;
   const canGoNext = pageIndex < totalPages - 1;
@@ -145,12 +164,34 @@ export default function GalleryAlbumsSidebar({
             </div>
           </div>
 
-        <div className={`${collapsed ? 'mt-3' : 'mt-4'} flex min-h-0 flex-1 flex-col space-y-2`}>
+          {!collapsed ? (
+            <div className="mt-4">
+              <label className="flex h-11 items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 dark:border-slate-800 dark:bg-slate-950/40">
+                <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <span className="sr-only">Search albums</span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search albums"
+                  className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50"
+                />
+              </label>
+            </div>
+          ) : null}
+
+        <div className={`${collapsed ? 'mt-3' : 'mt-3'} flex min-h-0 flex-1 flex-col space-y-2`}>
    
 
           {!loadingAlbums && resolvedAlbums.length === 0 ? (
             <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               Create an album to get started.
+            </div>
+          ) : null}
+
+          {!loadingAlbums && resolvedAlbums.length > 0 && filteredAlbums.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              No albums matched your search.
             </div>
           ) : null}
 
