@@ -6,6 +6,8 @@ export type ImportedDrivePhoto = {
   caption?: string;
   dateTaken?: string;
   mimeType?: string;
+  /** Prefer Drive metadata sha256 when present (avoids full-file download). */
+  contentHash?: string;
 };
 
 export type GoogleDriveFolderEntry = {
@@ -55,7 +57,28 @@ type GoogleFileResponse = {
     time?: string;
   };
   createdTime?: string;
+  sha256Checksum?: string;
+  md5Checksum?: string;
 };
+
+function normalizeDriveSha256Checksum(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  return /^[a-f0-9]{64}$/.test(normalized) ? normalized : undefined;
+}
+
+function toImportedDrivePhoto(file: GoogleFileResponse): ImportedDrivePhoto {
+  return {
+    sourceId: file.id,
+    imageUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(file.id)}&sz=w2000`,
+    caption: file.name,
+    dateTaken: file.imageMediaMetadata?.time || file.createdTime,
+    mimeType: file.mimeType,
+    contentHash: normalizeDriveSha256Checksum(file.sha256Checksum),
+  };
+}
 
 type GoogleFilesListResponse = {
   files?: GoogleFileResponse[];
@@ -352,6 +375,78 @@ export class GoogleDriveAdapter {
     };
   }
 
+  async listFolderMediaIds(args: {
+    accessToken: string;
+    folderId: string;
+    mediaTypeFilter?: 'all' | 'images' | 'videos';
+  }): Promise<string[]> {
+    const mediaTypeFilter = args.mediaTypeFilter || 'all';
+    const allowedMimePrefixes =
+      mediaTypeFilter === 'images'
+        ? ['image/']
+        : mediaTypeFilter === 'videos'
+          ? ['video/']
+          : ALLOWED_MEDIA_MIME_PREFIXES;
+
+    const queue: string[] = [args.folderId];
+    const visited = new Set<string>();
+    const fileIds: string[] = [];
+
+    while (queue.length > 0) {
+      const folderId = queue.shift();
+      if (!folderId || visited.has(folderId)) {
+        continue;
+      }
+
+      visited.add(folderId);
+
+      let pageToken: string | null = null;
+      do {
+        const mediaQueryPart =
+          mediaTypeFilter === 'images'
+            ? "mimeType contains 'image/'"
+            : mediaTypeFilter === 'videos'
+              ? "mimeType contains 'video/'"
+              : "(mimeType contains 'image/' or mimeType contains 'video/')";
+        const query = `'${folderId}' in parents and trashed = false and (mimeType = '${GOOGLE_FOLDER_MIME_TYPE}' or ${mediaQueryPart})`;
+        const params = new URLSearchParams({
+          q: query,
+          pageSize: '1000',
+          fields: 'files(id,mimeType),nextPageToken',
+          supportsAllDrives: 'true',
+          includeItemsFromAllDrives: 'true',
+        });
+
+        if (pageToken) {
+          params.set('pageToken', pageToken);
+        }
+
+        const data = await this.fetchFilesList({ accessToken: args.accessToken, params });
+        const files = Array.isArray(data.files) ? data.files : [];
+        for (const file of files) {
+          if (!file?.id || typeof file?.mimeType !== 'string') {
+            continue;
+          }
+
+          if (file.mimeType === GOOGLE_FOLDER_MIME_TYPE) {
+            queue.push(file.id);
+            continue;
+          }
+
+          if (!allowedMimePrefixes.some((prefix) => file.mimeType.startsWith(prefix))) {
+            continue;
+          }
+
+          fileIds.push(file.id);
+        }
+
+        pageToken = data.nextPageToken || null;
+      } while (pageToken);
+    }
+
+    return fileIds;
+  }
+
   async listFolderMedia(args: {
     accessToken: string;
     folderId: string;
@@ -373,7 +468,7 @@ export class GoogleDriveAdapter {
       const media: ImportedDrivePhoto[] = [];
       for (const fileId of selectedIds) {
         const params = new URLSearchParams({
-          fields: 'id,name,mimeType,trashed,imageMediaMetadata(time),createdTime',
+          fields: 'id,name,mimeType,trashed,imageMediaMetadata(time),createdTime,sha256Checksum',
           supportsAllDrives: 'true',
         });
 
@@ -399,13 +494,7 @@ export class GoogleDriveAdapter {
           continue;
         }
 
-        media.push({
-          sourceId: file.id,
-          imageUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(file.id)}&sz=w2000`,
-          caption: file.name,
-          dateTaken: file.imageMediaMetadata?.time || file.createdTime,
-          mimeType: file.mimeType,
-        });
+        media.push(toImportedDrivePhoto(file));
       }
 
       return media;
@@ -435,7 +524,7 @@ export class GoogleDriveAdapter {
         const params = new URLSearchParams({
           q: query,
           pageSize: '1000',
-          fields: 'files(id,name,mimeType,imageMediaMetadata(time),createdTime),nextPageToken',
+          fields: 'files(id,name,mimeType,imageMediaMetadata(time),createdTime,sha256Checksum),nextPageToken',
           orderBy: 'createdTime desc,name_natural',
           supportsAllDrives: 'true',
           includeItemsFromAllDrives: 'true',
@@ -461,13 +550,7 @@ export class GoogleDriveAdapter {
             continue;
           }
 
-          media.push({
-            sourceId: file.id,
-            imageUrl: `https://drive.google.com/thumbnail?id=${encodeURIComponent(file.id)}&sz=w2000`,
-            caption: file.name,
-            dateTaken: file.imageMediaMetadata?.time || file.createdTime,
-            mimeType: file.mimeType,
-          });
+          media.push(toImportedDrivePhoto(file));
         }
 
         pageToken = data.nextPageToken || null;
@@ -478,6 +561,32 @@ export class GoogleDriveAdapter {
   }
 
   async getFileContentHash(args: { accessToken: string; fileId: string }): Promise<string> {
+    const metaParams = new URLSearchParams({
+      fields: 'id,sha256Checksum',
+      supportsAllDrives: 'true',
+    });
+    const metaResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(args.fileId)}?${metaParams.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${args.accessToken}`,
+        },
+        cache: 'no-store',
+      },
+    );
+
+    if (metaResponse.ok) {
+      const meta = (await metaResponse.json()) as GoogleFileResponse;
+      const fromMeta = normalizeDriveSha256Checksum(meta?.sha256Checksum);
+      if (fromMeta) {
+        return fromMeta;
+      }
+    } else if (metaResponse.status !== 404) {
+      // Fall through to media download for transient/partial metadata failures.
+    } else {
+      throw await createGoogleDriveRequestError(metaResponse);
+    }
+
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(args.fileId)}?alt=media&supportsAllDrives=true`,
       {

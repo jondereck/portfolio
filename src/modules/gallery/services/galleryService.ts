@@ -745,10 +745,13 @@ export class GalleryService {
         continue;
       }
 
-      const contentHash = await this.driveAdapter.getFileContentHash({
-        accessToken: args.accessToken,
-        fileId: photo.sourceId,
-      });
+      const contentHash =
+        typeof photo.contentHash === 'string' && /^[a-f0-9]{64}$/i.test(photo.contentHash)
+          ? photo.contentHash.toLowerCase()
+          : await this.driveAdapter.getFileContentHash({
+              accessToken: args.accessToken,
+              fileId: photo.sourceId,
+            });
 
       const duplicateByHash = profileId
         ? await this.repo.findProfilePhotoByContentHash(profileId, contentHash)

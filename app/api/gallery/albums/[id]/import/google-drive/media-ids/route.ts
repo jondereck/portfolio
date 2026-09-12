@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { canAccessAdminModuleAction } from '@/lib/auth/module-access';
 import { getGoogleDriveAccessTokenForUser } from '@/lib/auth/google-drive';
 import { toAuthErrorResponse } from '@/lib/auth/responses';
@@ -6,12 +7,19 @@ import { getAdminSettings } from '@/lib/server/admin-settings';
 import { isRateLimited } from '@/lib/server/rate-limit';
 import { toErrorResponse } from '@/lib/server/api-responses';
 import { resolveManagedProfileFromRequest } from '@/lib/profile/resolve-profile';
-import { driveImportSchema } from '@/src/modules/gallery/contracts';
+import { GoogleDriveAdapter } from '@/src/modules/gallery/adapters/googleDriveAdapter';
 import { galleryService } from '@/src/modules/gallery/services/galleryService';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export const maxDuration = 300;
+export const maxDuration = 60;
+
+const driveAdapter = new GoogleDriveAdapter();
+
+const mediaIdsSchema = z.object({
+  folderId: z.string().trim().min(1),
+  mediaTypeFilter: z.enum(['all', 'images', 'videos']).optional().default('all'),
+});
 
 const parseId = (value: string) => {
   const id = Number(value);
@@ -44,72 +52,16 @@ export async function POST(request: Request, context: RouteContext) {
     if (!album) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    const parsed = driveImportSchema.parse(body);
+
+    const parsed = mediaIdsSchema.parse(body);
     const accessToken = await getGoogleDriveAccessTokenForUser(actor.user.id);
-    const shouldStream = new URL(request.url).searchParams.get('stream') === '1';
-    if (!shouldStream) {
-      const result = await galleryService.importGoogleDriveFolder(albumId, {
-        folderId: String(parsed.folderId),
-        selectedFileIds: parsed.selectedFileIds,
-        mediaTypeFilter: parsed.mediaTypeFilter,
-        accessToken,
-      });
-
-      return NextResponse.json(
-        {
-          importedCount: result.created.length,
-          skippedCount: result.skipped.length,
-          photos: result.created,
-          skipped: result.skipped,
-        },
-        { status: 201 },
-      );
-    }
-
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        const send = (event: string, payload: Record<string, unknown>) => {
-          const message = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
-          controller.enqueue(encoder.encode(message));
-        };
-
-        try {
-          send('start', { ok: true });
-          const result = await galleryService.importGoogleDriveFolder(albumId, {
-            folderId: String(parsed.folderId),
-            selectedFileIds: parsed.selectedFileIds,
-            mediaTypeFilter: parsed.mediaTypeFilter,
-            accessToken,
-            onProgress: (progress) => {
-              send('progress', progress);
-            },
-          });
-
-          send('complete', {
-            importedCount: result.created.length,
-            skippedCount: result.skipped.length,
-            photos: result.created,
-            skipped: result.skipped,
-          });
-          controller.close();
-        } catch (streamError) {
-          send('error', {
-            error: streamError instanceof Error ? streamError.message : 'Unable to import Google Drive folder.',
-          });
-          controller.close();
-        }
-      },
+    const fileIds = await driveAdapter.listFolderMediaIds({
+      accessToken,
+      folderId: parsed.folderId,
+      mediaTypeFilter: parsed.mediaTypeFilter,
     });
 
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-      },
-    });
+    return NextResponse.json({ fileIds, count: fileIds.length });
   } catch (error) {
     const authError = toAuthErrorResponse(error);
     if (authError) {
@@ -141,6 +93,6 @@ export async function POST(request: Request, context: RouteContext) {
         return NextResponse.json({ error: error.message }, { status: 502 });
       }
     }
-    return toErrorResponse(error, 'Unable to import Google Drive folder.');
+    return toErrorResponse(error, 'Unable to list Google Drive media.');
   }
 }

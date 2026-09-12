@@ -13,6 +13,12 @@ import {
   uploadAlbumFiles,
 } from './galleryUploadBatch';
 import {
+  chunkArray,
+  DRIVE_IMPORT_CHUNK_SIZE,
+  importDriveChunk,
+  resolveDriveImportFileIds,
+} from './galleryDriveImportBatch';
+import {
   readCachedAlbumPhotos,
   warmAlbumMediaCache,
   writeCachedAlbumPhotos,
@@ -666,6 +672,11 @@ export function useGalleryAdminController() {
       return;
     }
 
+    if (!driveForm.folderId?.trim()) {
+      toast.error('Select a Google Drive folder first.');
+      return;
+    }
+
     setImportingDrive(true);
     const expectedTotal = typeof driveForm.mediaCount === 'number' ? Math.max(0, driveForm.mediaCount) : 0;
     const selectedCount = Array.isArray(driveForm.selectedFileIds) ? driveForm.selectedFileIds.length : 0;
@@ -673,9 +684,9 @@ export function useGalleryAdminController() {
     const importTargetName =
       driveForm.folderName?.trim() || driveForm.folderId?.trim() || 'Google Drive folder';
     setImportProgress({
-      percent: 3,
-      currentFileName: importTargetName,
-      currentFileIndex: resolvedExpectedTotal > 0 ? 1 : 0,
+      percent: 2,
+      currentFileName: 'Preparing Drive import…',
+      currentFileIndex: 0,
       totalFiles: resolvedExpectedTotal,
       uploadedCount: 0,
       skippedCount: 0,
@@ -684,117 +695,96 @@ export function useGalleryAdminController() {
     });
     setImportSummary(null);
     driveImportAbortControllerRef.current = new AbortController();
+    const signal = driveImportAbortControllerRef.current.signal;
 
     try {
-      const response = await fetch(`/api/gallery/albums/${selectedAlbumId}/import/google-drive?stream=1`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: driveImportAbortControllerRef.current.signal,
-        cache: 'no-store',
-        body: JSON.stringify({
-          folderId: driveForm.folderId,
-          selectedFileIds: selectedCount > 0 ? driveForm.selectedFileIds : [],
-          mediaTypeFilter: driveForm.mediaTypeFilter || 'all',
-        }),
+      const fileIds = await resolveDriveImportFileIds({
+        albumId: selectedAlbumId,
+        folderId: driveForm.folderId,
+        selectedFileIds: selectedCount > 0 ? driveForm.selectedFileIds : [],
+        mediaTypeFilter: driveForm.mediaTypeFilter || 'all',
+        signal,
       });
 
-      if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({}));
-        throw new Error(errorPayload?.error || 'Unable to import Google Drive folder.');
+      if (fileIds.length === 0) {
+        throw new Error('No media found in the selected Google Drive folder.');
       }
 
-      if (!response.body) {
-        throw new Error('Import stream is unavailable.');
-      }
+      const chunks = chunkArray(fileIds, DRIVE_IMPORT_CHUNK_SIZE);
+      const overallTotal = fileIds.length;
+      let checkedOffset = 0;
+      let importedTotal = 0;
+      let skippedTotal = 0;
+      const skippedItems = [];
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let result = null;
+      setImportProgress({
+        percent: 3,
+        currentFileName: importTargetName,
+        currentFileIndex: 0,
+        totalFiles: overallTotal,
+        uploadedCount: 0,
+        skippedCount: 0,
+        failedCount: 0,
+        lastResult: null,
+      });
 
-      const applyProgress = (progressPayload = {}) => {
-        const totalCount = Number(progressPayload.totalCount);
-        const checkedCount = Number(progressPayload.checkedCount) || 0;
-        const importedCount = Number(progressPayload.importedCount) || 0;
-        const duplicateCount = Number(progressPayload.duplicateCount) || 0;
-        const resolvedTotal =
-          Number.isFinite(totalCount) && totalCount > 0 ? totalCount : Math.max(resolvedExpectedTotal, checkedCount, 1);
-        const percent = Math.min(99, Math.round((checkedCount / resolvedTotal) * 100));
+      for (const chunkIds of chunks) {
+        if (signal.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
+        }
 
-        setImportProgress({
-          percent,
-          currentFileName: progressPayload.currentFileName || importTargetName,
-          currentFileIndex: checkedCount,
-          totalFiles: resolvedTotal,
-          uploadedCount: importedCount,
-          skippedCount: duplicateCount,
-          failedCount: 0,
-          lastResult: null,
+        const chunkResult = await importDriveChunk({
+          albumId: selectedAlbumId,
+          folderId: driveForm.folderId,
+          selectedFileIds: chunkIds,
+          mediaTypeFilter: driveForm.mediaTypeFilter || 'all',
+          signal,
+          onProgress: (progressPayload = {}) => {
+            const chunkChecked = Number(progressPayload.checkedCount) || 0;
+            const chunkImported = Number(progressPayload.importedCount) || 0;
+            const chunkDuplicates = Number(progressPayload.duplicateCount) || 0;
+            const checkedCount = checkedOffset + chunkChecked;
+            const percent = Math.min(99, Math.round((checkedCount / Math.max(overallTotal, 1)) * 100));
+
+            setImportProgress({
+              percent,
+              currentFileName: progressPayload.currentFileName || importTargetName,
+              currentFileIndex: checkedCount,
+              totalFiles: overallTotal,
+              uploadedCount: importedTotal + chunkImported,
+              skippedCount: skippedTotal + chunkDuplicates,
+              failedCount: 0,
+              lastResult: null,
+            });
+          },
         });
-      };
 
-      const processSseChunk = (chunkText) => {
-        buffer += chunkText;
-        const messages = buffer.split('\n\n');
-        buffer = messages.pop() || '';
-
-        for (const message of messages) {
-          const lines = message.split('\n');
-          let eventName = 'message';
-          let dataText = '';
-          for (const line of lines) {
-            if (line.startsWith('event:')) {
-              eventName = line.slice(6).trim();
-            } else if (line.startsWith('data:')) {
-              dataText += line.slice(5).trim();
-            }
-          }
-
-          if (!dataText) {
-            continue;
-          }
-
-          const payload = JSON.parse(dataText);
-          if (eventName === 'progress') {
-            applyProgress(payload);
-          } else if (eventName === 'complete') {
-            result = payload;
-          } else if (eventName === 'error') {
-            throw new Error(payload?.error || 'Unable to import Google Drive folder.');
-          }
-        }
-      };
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
-        }
-        processSseChunk(decoder.decode(value, { stream: true }));
-      }
-      processSseChunk(decoder.decode());
-
-      if (!result) {
-        throw new Error('Import finished without a final result.');
+        const chunkImported = Number(chunkResult.importedCount) || 0;
+        const chunkSkipped = Number(chunkResult.skippedCount) || 0;
+        const chunkSkippedItems = Array.isArray(chunkResult.skipped) ? chunkResult.skipped : [];
+        importedTotal += chunkImported;
+        skippedTotal += chunkSkipped;
+        skippedItems.push(...chunkSkippedItems);
+        checkedOffset += chunkIds.length;
       }
 
-      const importedCount = Number(result.importedCount) || 0;
-      const skippedCount = Number(result.skippedCount) || 0;
-      const skippedItems = Array.isArray(result.skipped) ? result.skipped : [];
-      const totalItems = Math.max(importedCount + skippedCount, resolvedExpectedTotal);
+      const totalItems = Math.max(importedTotal + skippedTotal, overallTotal);
 
       setImportProgress({
         percent: 100,
         currentFileName: importTargetName,
         currentFileIndex: totalItems,
         totalFiles: totalItems,
-        uploadedCount: importedCount,
-        skippedCount,
+        uploadedCount: importedTotal,
+        skippedCount: skippedTotal,
         failedCount: 0,
         lastResult:
           skippedItems.length > 0
             ? {
-                fileName: skippedItems[skippedItems.length - 1]?.caption || skippedItems[skippedItems.length - 1]?.sourceId || 'Drive item',
+                fileName:
+                  skippedItems[skippedItems.length - 1]?.caption ||
+                  skippedItems[skippedItems.length - 1]?.sourceId ||
+                  'Drive item',
                 reason: skippedItems[skippedItems.length - 1]?.reason || 'Already imported into this album.',
               }
             : null,
@@ -802,8 +792,8 @@ export function useGalleryAdminController() {
 
       setImportSummary({
         totalFiles: totalItems,
-        uploadedCount: importedCount,
-        skippedCount,
+        uploadedCount: importedTotal,
+        skippedCount: skippedTotal,
         failedCount: 0,
         results: skippedItems.map((item, index) => ({
           fileName: item.caption || item.sourceId || `Drive item ${index + 1}`,
@@ -812,9 +802,9 @@ export function useGalleryAdminController() {
         })),
       });
       toast.success(
-        skippedCount > 0
-          ? `Imported ${importedCount} item(s) and skipped ${skippedCount} duplicate(s)`
-          : `Imported ${importedCount} photo(s) from Google Drive`,
+        skippedTotal > 0
+          ? `Imported ${importedTotal} item(s) and skipped ${skippedTotal} duplicate(s)`
+          : `Imported ${importedTotal} photo(s) from Google Drive`,
       );
 
       await loadPhotos(selectedAlbumId, sortMode);
