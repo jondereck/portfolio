@@ -108,12 +108,38 @@ export async function clearCachedAlbumPhotos(albumId) {
   });
 }
 
-function resolveWarmUrl(photo) {
+function buildGalleryMediaWarmUrl(photo, shareToken = '') {
+  if (!photo?.albumId || !photo?.id) return '';
+  const base = `/api/gallery/albums/${photo.albumId}/photos/${photo.id}/media`;
+  if (shareToken) {
+    return `${base}?share=${encodeURIComponent(shareToken)}`;
+  }
+  return base;
+}
+
+function resolveWarmUrl(photo, options = {}) {
   if (!photo) return '';
+
+  const { scope = 'admin', shareToken = '' } = options;
+
+  if (scope === 'gallery') {
+    if (photo.sourceType === 'gdrive' && photo.sourceId) {
+      return buildGalleryMediaWarmUrl(photo, shareToken);
+    }
+  }
 
   if (typeof photo.imageUrl === 'string' && photo.imageUrl.trim()) {
     const raw = photo.imageUrl.trim();
-    if (raw.startsWith('/')) return raw;
+    if (raw.startsWith('/api/gallery/albums/')) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      // Skip admin Drive proxies and other heavy admin media routes in cache warm.
+      if (raw.includes('/api/admin/integrations/google-drive/files/')) {
+        return '';
+      }
+      return raw;
+    }
     if (typeof window !== 'undefined') {
       try {
         const url = new URL(raw, window.location.origin);
@@ -126,21 +152,17 @@ function resolveWarmUrl(photo) {
     }
   }
 
-  if (photo.sourceType === 'gdrive' && photo.sourceId) {
-    return `/api/admin/integrations/google-drive/files/${encodeURIComponent(photo.sourceId)}`;
-  }
-
   return '';
 }
 
-export async function warmAlbumMediaCache(photos = []) {
+export async function warmAlbumMediaCache(photos = [], options = {}) {
   if (typeof window === 'undefined' || !('caches' in window)) return;
   if (!Array.isArray(photos) || photos.length === 0) return;
 
   const urls = [];
   const seen = new Set();
   for (const photo of photos) {
-    const url = resolveWarmUrl(photo);
+    const url = resolveWarmUrl(photo, options);
     if (!url || seen.has(url)) continue;
     seen.add(url);
     urls.push(url);

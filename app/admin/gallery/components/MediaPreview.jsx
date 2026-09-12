@@ -2,13 +2,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAdminMediaUrl, getPlayableMediaUrl, getVideoPosterUrl, isVideoUrl } from '../utils';
+import {
+  getAdminGridPreviewUrl,
+  getAdminMediaUrl,
+  getGoogleDriveThumbnailUrl,
+  getPlayableMediaUrl,
+  getVideoPosterUrl,
+  isVideoUrl,
+} from '../utils';
 import { isPhotoAudio, isPhotoVideo } from '@/lib/gallery-media';
 import { MEDIA_PROTECT_ELEMENT_PROPS, MEDIA_PROTECT_IMAGE_PROPS } from '@/lib/media-protect';
 
 function getDriveThumbnailUrl(sourceType, sourceId) {
   if (sourceType !== 'gdrive' || !sourceId) return '';
-  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(String(sourceId))}&sz=w1200`;
+  return getGoogleDriveThumbnailUrl(sourceId, 'w1200');
 }
 
 function VideoGridThumbnail({
@@ -104,7 +111,9 @@ export default function MediaPreview({
   sourceType,
   sourceId,
 }) {
+  const isGridThumbnail = !controls && !mediaRef;
   const resolvedUrl = getAdminMediaUrl(url, sourceType, sourceId);
+  const gridPreviewUrl = isGridThumbnail ? getAdminGridPreviewUrl(url, sourceType, sourceId) : resolvedUrl;
   const mediaRecord =
     url && typeof url === 'object'
       ? url
@@ -166,7 +175,7 @@ export default function MediaPreview({
 
   return (
     <img
-      src={resolvedUrl}
+      src={gridPreviewUrl || resolvedUrl}
       alt={alt}
       className={className}
       onLoad={onLoadedData}

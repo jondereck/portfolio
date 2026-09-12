@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useMemo, useRef, useState } from 'react';
 import { Check, Plus, Search, SlidersHorizontal, X } from 'lucide-react';
-import { getAdminMediaUrl } from '@/app/admin/gallery/utils';
+import { getAdminGridPreviewUrl } from '@/app/admin/gallery/utils';
 
 export const inputStyles =
   'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:border-slate-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950';
@@ -190,7 +190,7 @@ export function GalleryAlbumPicker({
   const [statusFilter, setStatusFilter] = useState('all');
   const [mobileFiltersCollapsed, setMobileFiltersCollapsed] = useState(false);
   const dialogInitialFocusRef = useRef(null);
-  const resolveAlbumCoverUrl = (album) => getAdminMediaUrl(album?.coverPhoto);
+  const resolveAlbumCoverUrl = (album) => getAdminGridPreviewUrl(album?.coverPhoto);
 
   const selectedAlbum = useMemo(
     () => albums.find((album) => album.id === selectedAlbumId) ?? null,

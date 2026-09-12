@@ -3,13 +3,13 @@
 import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
-import { getAdminMediaUrl } from '@/app/admin/gallery/utils';
+import { getAdminGridPreviewUrl } from '@/app/admin/gallery/utils';
 import { shouldBlurPhoto } from '@/lib/gallery-media';
 
 function resolveAlbumCoverUrl(album) {
   const coverPhoto = album?.coverPhoto ?? null;
   if (!coverPhoto) return '';
-  const url = getAdminMediaUrl(coverPhoto);
+  const url = getAdminGridPreviewUrl(coverPhoto);
   return typeof url === 'string' ? url : '';
 }
 

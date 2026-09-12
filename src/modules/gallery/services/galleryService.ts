@@ -138,7 +138,17 @@ export class GalleryService {
 
   async listAlbums(profileId: number, canViewDrafts: boolean) {
     const albums = await this.repo.listAlbums(profileId, !canViewDrafts);
-    return this.attachAlbumActivity(albums);
+    const withActivity = await this.attachAlbumActivity(albums);
+    const breakdown = await this.repo.getMediaBreakdownByAlbumIds(withActivity.map((album) => album.id));
+
+    return withActivity.map((album) => ({
+      ...album,
+      mediaCount: breakdown.get(album.id) ?? {
+        photos: album._count?.photos ?? 0,
+        videos: 0,
+        audio: 0,
+      },
+    }));
   }
 
   private sortPhotosByManualArrangement(photos: AlbumPhotoRecord[]) {

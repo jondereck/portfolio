@@ -1,4 +1,5 @@
 import { PhotoSourceType, Prisma } from '@prisma/client';
+import { isPhotoAudio, isPhotoVideo } from '@/lib/gallery-media';
 import { prisma } from '@/lib/prisma';
 import type { GallerySort } from '@/src/modules/gallery/contracts';
 
@@ -50,6 +51,12 @@ export type AlbumPhotoActivityRecord = {
   activityAt: Date | null;
 };
 
+export type AlbumMediaBreakdown = {
+  photos: number;
+  videos: number;
+  audio: number;
+};
+
 const resolvePhotoOrderBy = (sort: GallerySort): Prisma.AlbumPhotoOrderByWithRelationInput[] => {
   if (sort === 'dateAsc') {
     return [{ dateTaken: 'asc' }, { uploadedAt: 'asc' }, { id: 'asc' }];
@@ -72,6 +79,35 @@ export class GalleryRepository {
       include: albumInclude,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
+  }
+
+  async getMediaBreakdownByAlbumIds(albumIds: number[]): Promise<Map<number, AlbumMediaBreakdown>> {
+    const breakdown = new Map<number, AlbumMediaBreakdown>();
+    if (albumIds.length === 0) {
+      return breakdown;
+    }
+
+    const rows = await prisma.albumPhoto.findMany({
+      where: { albumId: { in: albumIds } },
+      select: { albumId: true, mimeType: true },
+    });
+
+    for (const row of rows) {
+      const current = breakdown.get(row.albumId) ?? { photos: 0, videos: 0, audio: 0 };
+      const stub = { mimeType: row.mimeType };
+
+      if (isPhotoAudio(stub)) {
+        current.audio += 1;
+      } else if (isPhotoVideo(stub)) {
+        current.videos += 1;
+      } else {
+        current.photos += 1;
+      }
+
+      breakdown.set(row.albumId, current);
+    }
+
+    return breakdown;
   }
 
   async getLatestPhotoActivityByAlbumIds(albumIds: number[]): Promise<AlbumPhotoActivityRecord[]> {

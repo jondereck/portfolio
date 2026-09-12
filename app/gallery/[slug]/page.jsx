@@ -1145,9 +1145,15 @@ export default function AlbumDetailPage({ params }) {
           cacheScope,
         );
         if (Array.isArray(cachedPhotos) && cachedPhotos.length > 0) {
-          setPhotos(cachedPhotos);
+          const normalizedCached = cachedPhotos.map((photo) =>
+            normalizeGalleryPhoto(photo, albumData.id, shareToken),
+          );
+          setPhotos(normalizedCached);
           setLoadingPhotos(false);
-          void warmAlbumMediaCache(cachedPhotos);
+          void warmAlbumMediaCache(normalizedCached, {
+            scope: "gallery",
+            shareToken,
+          });
         }
 
         const photosUrl = new URL(
@@ -1174,7 +1180,7 @@ export default function AlbumDetailPage({ params }) {
           : [];
         setPhotos(nextPhotos);
         void writeCachedAlbumPhotos(albumData.id, sort, nextPhotos, cacheScope);
-        void warmAlbumMediaCache(nextPhotos);
+        void warmAlbumMediaCache(nextPhotos, { scope: "gallery", shareToken });
       } catch (err) {
         setError(err.message);
         setLoading(false);
@@ -1234,8 +1240,8 @@ export default function AlbumDetailPage({ params }) {
 
   useEffect(() => {
     if (pagedGalleryPhotos.length === 0) return;
-    void warmAlbumMediaCache(pagedGalleryPhotos);
-  }, [pagedGalleryPhotos]);
+    void warmAlbumMediaCache(pagedGalleryPhotos, { scope: "gallery", shareToken });
+  }, [pagedGalleryPhotos, shareToken]);
 
   const audioTracks = useMemo(() => photos.filter((item) => isPhotoAudio(item)), [photos]);
   const currentAudioTrack = audioTracks[currentAudioTrackIndex] ?? null;

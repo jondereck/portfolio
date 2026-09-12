@@ -4,7 +4,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment, useMemo, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
-import { getAdminMediaUrl } from '@/app/admin/gallery/utils';
+import { getAdminGridPreviewUrl } from '@/app/admin/gallery/utils';
 
 function getAlbumCount(album) {
   if (!album) return null;
@@ -30,7 +30,7 @@ function getAlbumSortTime(album) {
 function resolveAlbumCoverUrl(album) {
   const coverPhoto = album?.coverPhoto ?? null;
   if (!coverPhoto) return '';
-  const url = getAdminMediaUrl(coverPhoto);
+  const url = getAdminGridPreviewUrl(coverPhoto);
   return typeof url === 'string' ? url : '';
 }
 

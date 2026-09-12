@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { getVideoPosterUrl, isPhotoAudio, isPhotoVideo, shouldBlurPhoto } from '@/lib/gallery-media';
 import { MEDIA_PROTECT_IMAGE_PROPS } from '@/lib/media-protect';
 import { useLoadingStore } from '@/store/loading';
+import CinematicAlbumDeck from './CinematicAlbumDeck';
 
 const GALLERY_VIEW_STORAGE_KEY = 'private-gallery-view';
 const GALLERY_ADMIN_CLICK_WINDOW_MS = 550;
@@ -96,12 +97,6 @@ const buildTitleLines = (name) => {
   return [words.slice(0, midpoint).join(' '), words.slice(midpoint).join(' ')];
 };
 
-const normalizeAlbumPhotosPayload = (payload) => {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.photos)) return payload.photos;
-  return [];
-};
-
 const buildGalleryMediaUrl = (albumId, photoId) => {
   if (!albumId || !photoId) return '';
   return `/api/gallery/albums/${albumId}/photos/${photoId}/media`;
@@ -149,39 +144,6 @@ const preloadCoverUrl = (url, cache) => {
   image.decoding = 'async';
   image.src = url;
 };
-const attachAlbumMediaCounts = async (albums) => {
-  const withCounts = await Promise.all(
-    albums.map(async (album) => {
-      try {
-        const payload = await fetchJson(`/api/gallery/albums/${album.id}/photos?sort=custom`);
-        const mediaItems = normalizeAlbumPhotosPayload(payload);
-        const audio = mediaItems.reduce((total, item) => (isPhotoAudio(item) ? total + 1 : total), 0);
-        const videos = mediaItems.reduce((total, item) => (!isPhotoAudio(item) && isPhotoVideo(item) ? total + 1 : total), 0);
-
-        return {
-          ...album,
-          mediaCount: {
-            photos: Math.max(mediaItems.length - videos - audio, 0),
-            videos,
-            audio,
-          },
-        };
-      } catch {
-        return {
-          ...album,
-          mediaCount: {
-            photos: album?._count?.photos ?? 0,
-            videos: 0,
-            audio: 0,
-          },
-        };
-      }
-    }),
-  );
-
-  return withCounts;
-};
-
 const getAlbumMediaCounts = (album) => {
   if (typeof album?.mediaCount?.photos === 'number' && typeof album?.mediaCount?.videos === 'number') {
     return album.mediaCount;
@@ -247,41 +209,6 @@ function GalleryViewToggle({ currentView, onChange }) {
   );
 }
 
-function AlbumStats({ counts, pillClassName = '', className = '' }) {
-  return (
-    <div className={joinClassNames('flex flex-wrap items-center gap-2.5', className)}>
-      <span
-        className={joinClassNames(
-          'rounded-full border border-white/28 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/92',
-          pillClassName,
-        )}
-      >
-        {counts.photos} Photos
-      </span>
-      {counts.videos > 0 ? (
-        <span
-          className={joinClassNames(
-            'rounded-full border border-white/28 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/92',
-            pillClassName,
-          )}
-        >
-          {counts.videos} Videos
-        </span>
-      ) : null}
-      {counts.audio > 0 ? (
-        <span
-          className={joinClassNames(
-            'rounded-full border border-white/28 bg-white/[0.03] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/92',
-            pillClassName,
-          )}
-        >
-          {counts.audio} Audio
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
 function GalleryFooter({ activeIndex, total, onPrev, onNext, className = '' }) {
   return (
     <footer
@@ -339,10 +266,8 @@ function AlbumDeckCard({
         'group relative aspect-[0.72] shrink-0 overflow-hidden rounded-[26px] border text-left shadow-[0_24px_60px_rgba(2,6,23,0.32)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
         isDeck
           ? joinClassNames(
-              'snap-start transition-[transform,opacity,border-color,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]',
-              isActive
-                ? 'z-[1] scale-100 border-white/75 opacity-100 shadow-[0_0_28px_rgba(147,197,253,0.28)] ring-2 ring-sky-200/50'
-                : 'scale-[0.88] border-white/22 opacity-50 hover:border-white/40 hover:opacity-75',
+              'transition duration-300',
+              isActive ? 'border-white/70 ring-2 ring-white/45' : 'border-white/28 hover:border-white/50',
             )
           : joinClassNames(
               'w-full transition duration-300',
@@ -377,7 +302,6 @@ function AlbumDeckCard({
 
 function CinematicGalleryView({
   activeAlbum,
-  activeCounts,
   headlineTop,
   headlineBottom,
   albums,
@@ -390,72 +314,6 @@ function CinematicGalleryView({
   onPrev,
   onNext,
 }) {
-  const scrollerRef = useRef(null);
-  const cardRefs = useRef([]);
-  const scrollSyncLockRef = useRef(false);
-  const [focusedPreviewOrder, setFocusedPreviewOrder] = useState(0);
-
-  const previewAlbums = useMemo(() => {
-    if (!Array.isArray(albums) || albums.length <= 1) return [];
-
-    return Array.from({ length: albums.length - 1 }, (_, offset) => {
-      const index = (activeIndex + offset + 1) % albums.length;
-      return { album: albums[index], index, order: offset };
-    });
-  }, [albums, activeIndex]);
-
-  useEffect(() => {
-    setFocusedPreviewOrder(0);
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    scrollSyncLockRef.current = true;
-    scroller.scrollTo({ left: 0, behavior: 'smooth' });
-    const unlockTimer = window.setTimeout(() => {
-      scrollSyncLockRef.current = false;
-    }, 480);
-    return () => window.clearTimeout(unlockTimer);
-  }, [activeIndex]);
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller || previewAlbums.length <= 1) return undefined;
-
-    let settleTimer = null;
-    const syncFocusedFromScroll = () => {
-      if (scrollSyncLockRef.current) return;
-
-      const scrollerRect = scroller.getBoundingClientRect();
-      const focusX = scrollerRect.left + Math.min(scrollerRect.width * 0.28, 120);
-      let bestOrder = focusedPreviewOrder;
-      let bestDistance = Number.POSITIVE_INFINITY;
-
-      cardRefs.current.forEach((card, order) => {
-        if (!card) return;
-        const rect = card.getBoundingClientRect();
-        const distance = Math.abs(rect.left - focusX);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestOrder = order;
-        }
-      });
-
-      if (bestOrder !== focusedPreviewOrder) {
-        setFocusedPreviewOrder(bestOrder);
-      }
-    };
-
-    const onScroll = () => {
-      if (settleTimer) window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(syncFocusedFromScroll, 70);
-    };
-
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      scroller.removeEventListener('scroll', onScroll);
-      if (settleTimer) window.clearTimeout(settleTimer);
-    };
-  }, [focusedPreviewOrder, previewAlbums.length]);
-
   const description = getCinematicDescription(activeAlbum);
 
   return (
@@ -486,46 +344,25 @@ function CinematicGalleryView({
                 {description}
               </p>
 
-              <div className="space-y-3.5">
+              <div>
                 <Link
                   href={`/gallery/${activeAlbum.slug}`}
                   className="inline-flex h-12 items-center rounded-full bg-white px-6 text-sm font-semibold text-slate-900 transition hover:scale-[1.02] hover:bg-slate-100"
                 >
                   Open Album
                 </Link>
-
-                <AlbumStats counts={activeCounts} />
               </div>
             </motion.div>
           </AnimatePresence>
 
-          <div
-            className="relative"
-            onMouseEnter={onPauseAutoplay}
-            onMouseLeave={onResumeAutoplay}
-          >
-            <div
-              ref={scrollerRef}
-              className="-mx-5 overflow-x-auto px-5 pb-3 pt-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
-              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
-            >
-              <div className="flex snap-x snap-mandatory items-center gap-3.5 pr-[24vw] sm:pr-[12vw] lg:pr-0">
-                {previewAlbums.map(({ album, index, order }) => (
-                  <AlbumDeckCard
-                    key={album.id}
-                    album={album}
-                    isActive={order === focusedPreviewOrder}
-                    blurUnclothyGenerated={blurUnclothyGenerated}
-                    onSelect={() => onSelectAlbum(index)}
-                    cardRef={(node) => {
-                      cardRefs.current[order] = node;
-                    }}
-                    className="w-[42vw] min-w-[148px] max-w-[188px] sm:w-[31vw] sm:min-w-[170px] sm:max-w-[214px] lg:w-[185px] xl:w-[198px]"
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+          <CinematicAlbumDeck
+            albums={albums}
+            activeIndex={activeIndex}
+            blurUnclothyGenerated={blurUnclothyGenerated}
+            onSelectAlbum={onSelectAlbum}
+            onPauseAutoplay={onPauseAutoplay}
+            onResumeAutoplay={onResumeAutoplay}
+          />
         </div>
       </section>
 
@@ -659,11 +496,10 @@ export default function GalleryPage() {
               .filter((item) => item.isPublished)
               .sort((left, right) => getAlbumActivityTime(right) - getAlbumActivityTime(left))
           : [];
-        const albumsWithCounts = await attachAlbumMediaCounts(publishedAlbums);
         const resolvedDefaultView = normalizeGalleryView(settingsPayload?.defaultGalleryView);
         setBlurUnclothyGenerated(settingsPayload?.blurUnclothyGenerated !== false);
 
-        setAlbums(albumsWithCounts.map((album) => normalizeGalleryAlbum(album)));
+        setAlbums(publishedAlbums.map((album) => normalizeGalleryAlbum(album)));
         setActiveIndex(0);
 
         let storedView = null;
@@ -720,7 +556,6 @@ export default function GalleryPage() {
 
   const activeAlbum = albums[activeIndex] || null;
   const activeCover = activeAlbum ? resolveAlbumCoverDisplayUrl(activeAlbum) || resolveAlbumCover(activeAlbum) : '';
-  const activeCounts = getAlbumMediaCounts(activeAlbum);
   const [headlineTop, headlineBottom] = buildTitleLines(activeAlbum?.name);
 
   const compactAlbumEntries = useMemo(() => {
@@ -799,11 +634,23 @@ export default function GalleryPage() {
       return;
     }
 
+    const target = event.target;
+    if (target instanceof Element && target.closest('[data-gallery-deck-scroll]')) {
+      setTouchStartX(null);
+      return;
+    }
+
     setTouchStartX(event.touches?.[0]?.clientX ?? null);
   };
 
   const onTouchEnd = (event) => {
     if (currentView !== 'cinematic') {
+      return;
+    }
+
+    const target = event.target;
+    if (target instanceof Element && target.closest('[data-gallery-deck-scroll]')) {
+      setTouchStartX(null);
       return;
     }
 
@@ -951,7 +798,6 @@ export default function GalleryPage() {
           ) : (
             <CinematicGalleryView
               activeAlbum={activeAlbum}
-              activeCounts={activeCounts}
               headlineTop={headlineTop}
               headlineBottom={headlineBottom}
               albums={albums}

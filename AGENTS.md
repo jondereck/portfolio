@@ -13,27 +13,9 @@ This repo uses **Graphify**. A built graph lives under `graphify-out/` (especial
 
 Goal: **save tokens** by asking the graph first instead of re-discovering the codebase every time.
 
-## Dev log (keep current)
+## Dev log
 
-**Agents must update this section** at the end of any meaningful change set (feature, fix, UX tweak, API behavior). Newest entries first. Keep each entry short: date · what · why/impact · key paths. Do not invent history; only log work that landed in the session.
-
-### 2026-09-12
-
-- **Private gallery UX + Manage accordion** — Compact uses cinematic deck cards (no “Private Collection” / cinematic blurb). Cinematic album strip is a snap deck (active larger, neighbors dimmed). Continue hidden when album empty or no resumable session. Manage albums: accordion sections, Save changes when dirty, profile-link icons auto-detect from pasted URL (no platform dropdown). Drive folder picker ignores Android back / backdrop dismiss — Close only. Mobile cinematic: fixed empty-gap/`scrollIntoView` page jump so album cover bg + hero stay visible. Desktop Quick Switch sidebar search bar. Cinematic autoplay 10s + preload next/prev covers; crossfade bg (no wait) to avoid black flash. `app/gallery/page.jsx`, `app/gallery/[slug]/page.jsx`, `GalleryAlbumsPanel.jsx`, `GalleryAlbumsSidebar.jsx`, `GalleryDriveFolderPicker.jsx`, `lib/gallery-profile-links.js`.
-- **Drive import chunking (900+)** — Large folder imports no longer die with “without a final result”: client lists media IDs, imports in batches of 25 with continuous progress, prefers Drive `sha256Checksum` over full-file download, `maxDuration=300` on import. `galleryDriveImportBatch.js`, `media-ids` route, `googleDriveAdapter.ts`, `useGalleryAdminController.js`.
-- **Album ZIP download progress** — Download ZIP reuses `GalleryBatchProgressModal` (beforeunload + back-block + Cancel). Live Preparing → per-media counter → Creating ZIP; AbortController stops packing. Client packs via manifest + per-item fetch + JSZip. `lib/gallery-album-zip-client.js`, `app/gallery/[slug]/page.jsx`, download routes.
-- **Public gallery cache + pagination** — `/gallery/[slug]` reuses CMS `GalleryMediaGridSkeleton`, IndexedDB photo cache + Cache Storage warm (`galleryPhotosCache`), and Media-library pagination (24/48/72). `app/gallery/[slug]/page.jsx`, `galleryPhotosCache.js`.
-- **Gallery Viewing Mode 1:1** — Panel matched to reference: 3 equal action columns, green Continue + outlined New Slideshow / Download ZIP, blue density slider, circular header icons. `app/gallery/[slug]/page.jsx`.
-- **Subtle video badge** — Media card “Video” label moved off-center to a small bottom-right chip (NSFW also tightened top-right). `GalleryMediaCard.jsx`.
-- **Smaller media select marks** — Selection circle / check on media cards reduced to 20×20 (`h-5 w-5`) so they don’t dominate thumbnails. `GalleryMediaCard.jsx`.
-- **Collapsed sidebar mark size** — Collapsed sidebar uses square `/logo192.png` JN mark filling the 40×40 control (wide `/jdn_logo.png` lockup was shrinking via object-contain). `CollapsibleSidebar.jsx`.
-- **Mobile arrange select vs drag** — On coarse pointers, card drag is disabled until at least one item is selected; select circle always visible on mobile. Reorder via long-press only after selection. Fixes inability to select for Move. `SortableMediaGrid.jsx`, `GalleryMediaCard.jsx`.
-- **Video grid thumbnails restored** — Anti-download change left non-Cloudinary videos as empty dark tiles. Thumbnails now try Cloudinary poster → Drive thumbnail → muted first-frame `<video>` fallback. `MediaPreview.jsx`.
-- **Web selection bar** — Desktop selection chrome matches compact floating bar (count badge, “media selected” / “Add to album”, album picker, icon actions, clear). **Set cover (image icon) only when exactly one image is selected** (hidden for multi-select, video, audio). Media + Arrange wired. `GallerySelectionActionsPopup.jsx`, `GalleryMediaPanel.jsx`, `GalleryArrangePanel.jsx`.
-- **Admin collapsed sidebar logo** — Collapsed desktop sidebar shows `/jdn_logo.png` (click to expand) instead of hamburger; skeleton matched. `components/admin/navigation/CollapsibleSidebar.jsx`, `AdminSidebarSkeleton.jsx`.
-- **Media per-page default 24** — Gallery Media “Per page” default/fallback is 24 (was 48). `modules/gallery/admin/GalleryMediaPanel.jsx`.
-- **Single-media download blocked** — Only album ZIP download remains. Per-photo download API returns 403; Download buttons removed from gallery viewer + admin media viewer. Thumbnails avoid `<video src>` (poster/placeholder) to reduce IDM overlays; playback/media proxies use protect attrs + `Content-Disposition: inline`. Key: `app/api/gallery/albums/[id]/photos/[photoId]/download/route.ts`, `lib/media-protect.js`, `MediaPreview.jsx`, `app/gallery/[slug]/page.jsx`, `GalleryMediaViewer.jsx`, Drive/media proxy routes.
-- **Earlier same day (Gallery CMS)** — Shared album-sidebar collapse key; Arrange ≈ Media CMS chrome; long-press arrange drag; unsaved-order leave prompt; device photo/media cache; workspace header cleanup; auto first-image album cover.
+After any meaningful change set (feature, fix, UX tweak, API behavior), append a short entry to **[DEV_LOG.md](./DEV_LOG.md)** (newest first): date · what · why/impact · key paths. Only log work that actually landed; do not invent history.
 
 ## Do not casually change UI/UX
 

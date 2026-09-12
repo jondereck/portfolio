@@ -4,13 +4,13 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Plus, 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
-import { buildPublicAlbumHref, getAdminMediaUrl } from '@/app/admin/gallery/utils';
+import { buildPublicAlbumHref, getAdminGridPreviewUrl } from '@/app/admin/gallery/utils';
 import { shouldBlurPhoto } from '@/lib/gallery-media';
 
 function resolveAlbumCoverUrl(album) {
   const coverPhoto = album?.coverPhoto ?? null;
   if (!coverPhoto) return '';
-  const url = getAdminMediaUrl(coverPhoto);
+  const url = getAdminGridPreviewUrl(coverPhoto);
   return typeof url === 'string' ? url : '';
 }
 

@@ -6,7 +6,7 @@ import { Check, ChevronsUpDown, Copy, ExternalLink, Search, X } from 'lucide-rea
 import Link from 'next/link';
 import { toast } from 'sonner';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
-import { buildPublicAlbumHref, getAdminMediaUrl } from '@/app/admin/gallery/utils';
+import { buildPublicAlbumHref, getAdminGridPreviewUrl } from '@/app/admin/gallery/utils';
 
 function getAlbumCount(album) {
   if (!album) return null;
@@ -32,7 +32,7 @@ function getAlbumSortTime(album) {
 function resolveAlbumCoverUrl(album) {
   const coverPhoto = album?.coverPhoto ?? null;
   if (!coverPhoto) return '';
-  const url = getAdminMediaUrl(coverPhoto);
+  const url = getAdminGridPreviewUrl(coverPhoto);
   return typeof url === 'string' ? url : '';
 }
 

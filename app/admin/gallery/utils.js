@@ -6,6 +6,31 @@ export {
   isVideoUrl,
 } from '@/lib/gallery-media';
 
+export const getGoogleDriveThumbnailUrl = (sourceId, size = 'w400') => {
+  if (!sourceId) return '';
+  return `https://drive.google.com/thumbnail?id=${encodeURIComponent(String(sourceId))}&sz=${size}`;
+};
+
+export const getAdminGridPreviewUrl = (photoOrUrl, sourceTypeArg, sourceIdArg) => {
+  if (photoOrUrl && typeof photoOrUrl === 'object') {
+    const sourceType = photoOrUrl.sourceType;
+    const sourceId = photoOrUrl.sourceId;
+    const imageUrl = photoOrUrl.imageUrl;
+
+    if (sourceType === 'gdrive' && sourceId) {
+      return getGoogleDriveThumbnailUrl(sourceId);
+    }
+
+    return typeof imageUrl === 'string' ? imageUrl : '';
+  }
+
+  if (sourceTypeArg === 'gdrive' && sourceIdArg) {
+    return getGoogleDriveThumbnailUrl(sourceIdArg);
+  }
+
+  return typeof photoOrUrl === 'string' ? photoOrUrl : '';
+};
+
 export const getAdminMediaUrl = (photoOrUrl, sourceTypeArg, sourceIdArg) => {
   if (photoOrUrl && typeof photoOrUrl === 'object') {
     const sourceType = photoOrUrl.sourceType;
