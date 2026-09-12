@@ -131,6 +131,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     selectPhotoRange,
     clearPhotoSelection,
     setSelectedAlbumId,
+    setCoverPhoto,
   } = controller;
 
   const selectedCount = selectedPhotoIds.length;
