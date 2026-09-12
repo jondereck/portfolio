@@ -13,6 +13,8 @@ import CinematicAlbumDeck from './CinematicAlbumDeck';
 const GALLERY_VIEW_STORAGE_KEY = 'private-gallery-view';
 const GALLERY_ADMIN_CLICK_WINDOW_MS = 550;
 const CINEMATIC_AUTOPLAY_MS = 10_000;
+const IMMERSIVE_LONG_PRESS_MS = 480;
+const IMMERSIVE_MOVE_CANCEL_PX = 12;
 const authLastVisitedPathStorageKey = 'auth:lastVisitedPath';
 
 const fetchJson = async (url) => {
@@ -318,7 +320,7 @@ function CinematicGalleryView({
 
   return (
     <>
-      <section className="mt-4 flex flex-1 flex-col pt-2 sm:mt-6 sm:pt-4 lg:mt-10 lg:justify-center lg:pt-0">
+      <section className="mt-7 flex flex-1 flex-col pt-3 sm:mt-9 sm:pt-5 lg:mt-12 lg:justify-center lg:pt-0">
         <div className="flex min-h-0 flex-1 flex-col gap-4 sm:gap-5 lg:grid lg:flex-none lg:grid-cols-[minmax(0,1fr)_minmax(480px,0.96fr)] lg:items-center lg:gap-10 xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.9fr)]">
           <div className="relative shrink-0">
             <AnimatePresence initial={false}>
@@ -331,11 +333,11 @@ function CinematicGalleryView({
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div className="space-y-2.5 overflow-hidden sm:space-y-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/88 sm:text-sm">
+                  <p className="text-xs font-normal uppercase tracking-[0.24em] text-white/65 sm:text-sm">
                     {normalizeLabel(activeAlbum)}
                   </p>
 
-                  <h1 className="max-w-full overflow-hidden font-['Bebas_Neue','Inter',sans-serif] text-[3.2rem] uppercase leading-[0.84] tracking-[0.03em] sm:text-[4.15rem] md:text-[4.8rem] lg:text-[6rem] xl:text-[7rem]">
+                  <h1 className="max-w-full overflow-hidden font-['Bebas_Neue','Inter',sans-serif] text-[4.35rem] uppercase leading-[0.82] tracking-[0.03em] sm:text-[5.1rem] md:text-[5.75rem] lg:text-[7rem] xl:text-[8rem]">
                     <span className="block break-words">{headlineTop}</span>
                     <span className="block break-words">{headlineBottom}</span>
                   </h1>
@@ -357,7 +359,7 @@ function CinematicGalleryView({
             </AnimatePresence>
           </div>
 
-          <div className="mt-auto min-w-0 lg:mt-0">
+          <div className="mt-auto min-w-0 -translate-y-10 sm:-translate-y-12 lg:mt-0 lg:translate-y-0">
             <CinematicAlbumDeck
               albums={albums}
               activeIndex={activeIndex}
@@ -463,9 +465,71 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isAutoplayPaused, setIsAutoplayPaused] = useState(false);
+  const [chromeHidden, setChromeHidden] = useState(false);
   const [touchStartX, setTouchStartX] = useState(null);
   const [slideDirection, setSlideDirection] = useState(1);
   const [compactSearchQuery, setCompactSearchQuery] = useState('');
+  const [sessionState, setSessionState] = useState('checking');
+  const immersivePressRef = useRef({
+    timerId: null,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    armed: false,
+  });
+
+  const verifySecureSession = async ({ redirectOnFail = false } = {}) => {
+    try {
+      const response = await fetch('/api/session/status', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      const data = await response.json().catch(() => ({}));
+      const ok = Boolean(data?.authenticated);
+      setSessionState(ok ? 'secure' : 'unsecured');
+
+      if (!ok && redirectOnFail) {
+        const next = encodeURIComponent(pathname || '/gallery');
+        router.replace(`/admin/login?next=${next}`);
+      }
+
+      return ok;
+    } catch {
+      setSessionState('unsecured');
+      if (redirectOnFail) {
+        const next = encodeURIComponent(pathname || '/gallery');
+        router.replace(`/admin/login?next=${next}`);
+      }
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const ok = await verifySecureSession({ redirectOnFail: true });
+      if (cancelled && !ok) return;
+    };
+
+    void run();
+
+    const intervalId = window.setInterval(() => {
+      void verifySecureSession({ redirectOnFail: false });
+    }, 45_000);
+
+    const onFocus = () => {
+      void verifySecureSession({ redirectOnFail: false });
+    };
+
+    window.addEventListener('focus', onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -528,7 +592,7 @@ export default function GalleryPage() {
   }, [startGlobalLoading, stopGlobalLoading]);
 
   useEffect(() => {
-    if (currentView !== 'cinematic' || isAutoplayPaused || albums.length <= 1) {
+    if (currentView !== 'cinematic' || isAutoplayPaused || chromeHidden || albums.length <= 1) {
       return;
     }
 
@@ -538,7 +602,7 @@ export default function GalleryPage() {
     }, CINEMATIC_AUTOPLAY_MS);
 
     return () => clearInterval(timer);
-  }, [currentView, isAutoplayPaused, albums.length]);
+  }, [currentView, isAutoplayPaused, chromeHidden, albums.length]);
 
   const coverPreloadCacheRef = useRef(new Set());
 
@@ -633,8 +697,79 @@ export default function GalleryPage() {
     }
   };
 
+  useEffect(() => {
+    if (!chromeHidden) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setChromeHidden(false);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [chromeHidden]);
+
+  const clearImmersivePress = () => {
+    if (immersivePressRef.current.timerId != null) {
+      window.clearTimeout(immersivePressRef.current.timerId);
+      immersivePressRef.current.timerId = null;
+    }
+    immersivePressRef.current.armed = false;
+    immersivePressRef.current.pointerId = null;
+  };
+
+  const isImmersiveExemptTarget = (target) => {
+    if (!(target instanceof Element)) return true;
+    return Boolean(
+      target.closest(
+        'a,button,input,textarea,select,label,[data-gallery-deck-scroll],[data-no-immersive]',
+      ),
+    );
+  };
+
+  const onImmersivePointerDown = (event) => {
+    if (chromeHidden) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (isImmersiveExemptTarget(event.target)) return;
+
+    clearImmersivePress();
+    immersivePressRef.current = {
+      timerId: window.setTimeout(() => {
+        immersivePressRef.current.timerId = null;
+        immersivePressRef.current.armed = false;
+        setChromeHidden(true);
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(12);
+        }
+      }, IMMERSIVE_LONG_PRESS_MS),
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      armed: true,
+    };
+  };
+
+  const onImmersivePointerMove = (event) => {
+    const press = immersivePressRef.current;
+    if (!press.armed || press.pointerId !== event.pointerId) return;
+    const dx = event.clientX - press.startX;
+    const dy = event.clientY - press.startY;
+    if (Math.hypot(dx, dy) > IMMERSIVE_MOVE_CANCEL_PX) {
+      clearImmersivePress();
+    }
+  };
+
+  const onImmersivePointerUp = (event) => {
+    if (immersivePressRef.current.pointerId === event.pointerId) {
+      clearImmersivePress();
+    }
+  };
+
+  useEffect(() => () => clearImmersivePress(), []);
+
   const onTouchStart = (event) => {
-    if (currentView !== 'cinematic') {
+    if (chromeHidden || currentView !== 'cinematic') {
       return;
     }
 
@@ -648,7 +783,7 @@ export default function GalleryPage() {
   };
 
   const onTouchEnd = (event) => {
-    if (currentView !== 'cinematic') {
+    if (chromeHidden || currentView !== 'cinematic') {
       return;
     }
 
@@ -699,6 +834,10 @@ export default function GalleryPage() {
     galleryAdminClickStateRef.current.timerId = window.setTimeout(() => {
       clearGalleryAdminClicks();
     }, GALLERY_ADMIN_CLICK_WINDOW_MS);
+
+    if (nextCount === 1) {
+      void verifySecureSession({ redirectOnFail: true });
+    }
   };
 
   useEffect(() => () => clearGalleryAdminClicks(), []);
@@ -709,6 +848,15 @@ export default function GalleryPage() {
       onKeyDown={onKeyDown}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onPointerDown={onImmersivePointerDown}
+      onPointerMove={onImmersivePointerMove}
+      onPointerUp={onImmersivePointerUp}
+      onPointerCancel={onImmersivePointerUp}
+      onContextMenu={(event) => {
+        if (chromeHidden || immersivePressRef.current.armed) {
+          event.preventDefault();
+        }
+      }}
       tabIndex={0}
       aria-label={currentView === 'compact' ? 'Private gallery browser' : 'Private gallery slider'}
     >
@@ -744,79 +892,119 @@ export default function GalleryPage() {
         )}
       </AnimatePresence>
 
-      <div
-        className={joinClassNames(
-          'absolute inset-0',
-          currentView === 'compact'
-            ? 'bg-[linear-gradient(135deg,rgba(2,6,23,0.95),rgba(2,6,23,0.82)_42%,rgba(2,6,23,0.95))]'
-            : 'bg-[linear-gradient(180deg,rgba(2,6,23,0.55)_0%,rgba(2,6,23,0.42)_42%,rgba(2,6,23,0.78)_100%)] lg:bg-[linear-gradient(108deg,rgba(2,6,23,0.84),rgba(2,6,23,0.36)_48%,rgba(2,6,23,0.92))]',
-        )}
-      />
-      <div
-        className={joinClassNames(
-          'absolute inset-0',
-          currentView === 'compact'
-            ? 'bg-[radial-gradient(circle_at_78%_18%,rgba(255,255,255,0.12),transparent_32%)]'
-            : 'bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.12),transparent_48%)] lg:bg-[radial-gradient(circle_at_72%_34%,rgba(255,255,255,0.15),transparent_42%)]',
-        )}
-      />
+      {!chromeHidden ? (
+        <>
+          <div
+            className={joinClassNames(
+              'absolute inset-0',
+              currentView === 'compact'
+                ? 'bg-[linear-gradient(135deg,rgba(2,6,23,0.95),rgba(2,6,23,0.82)_42%,rgba(2,6,23,0.95))]'
+                : 'bg-[linear-gradient(180deg,rgba(2,6,23,0.55)_0%,rgba(2,6,23,0.42)_42%,rgba(2,6,23,0.78)_100%)] lg:bg-[linear-gradient(108deg,rgba(2,6,23,0.84),rgba(2,6,23,0.36)_48%,rgba(2,6,23,0.92))]',
+            )}
+          />
+          <div
+            className={joinClassNames(
+              'absolute inset-0',
+              currentView === 'compact'
+                ? 'bg-[radial-gradient(circle_at_78%_18%,rgba(255,255,255,0.12),transparent_32%)]'
+                : 'bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.12),transparent_48%)] lg:bg-[radial-gradient(circle_at_72%_34%,rgba(255,255,255,0.15),transparent_42%)]',
+            )}
+          />
 
-      <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1480px] flex-col px-5 py-5 sm:px-6 sm:py-6 lg:min-h-screen lg:px-10 lg:py-8">
-        <header className="flex items-center justify-between gap-4">
-          <p className="text-xs uppercase tracking-[0.32em] text-white/85">Private Gallery</p>
-          <button
-            type="button"
-            onClick={handleSecureSessionClick}
-            onContextMenu={(event) => event.preventDefault()}
-            className="rounded-full border border-white/30 bg-white/10 px-4 py-1.5 text-[10px] uppercase tracking-[0.2em] text-white/90 backdrop-blur transition hover:bg-white/14"
-            aria-label="Secure session. Triple click to open gallery admin."
-          >
-            Secure Session
-          </button>
-        </header>
+          <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1480px] flex-col px-5 py-5 sm:px-6 sm:py-6 lg:min-h-screen lg:px-10 lg:py-8">
+            <header className="flex items-center justify-between gap-4">
+              <p className="text-xs uppercase tracking-[0.32em] text-white/85">Private Gallery</p>
+              <button
+                type="button"
+                onClick={handleSecureSessionClick}
+                onContextMenu={(event) => event.preventDefault()}
+                className={joinClassNames(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[8px] uppercase tracking-[0.14em] backdrop-blur transition',
+                  sessionState === 'secure'
+                    ? 'border-emerald-200/35 bg-emerald-400/10 text-emerald-50/90 hover:bg-emerald-400/16'
+                    : sessionState === 'checking'
+                      ? 'border-white/25 bg-white/10 text-white/70'
+                      : 'border-amber-200/40 bg-amber-400/10 text-amber-50/90 hover:bg-amber-400/16',
+                )}
+                aria-label={
+                  sessionState === 'secure'
+                    ? 'Secure session active. Triple click to open gallery admin.'
+                    : sessionState === 'checking'
+                      ? 'Checking session'
+                      : 'Session expired. Tap to sign in again.'
+                }
+              >
+                <span
+                  className={joinClassNames(
+                    'h-1.5 w-1.5 rounded-full',
+                    sessionState === 'secure'
+                      ? 'bg-emerald-300'
+                      : sessionState === 'checking'
+                        ? 'bg-white/45'
+                        : 'bg-amber-300',
+                  )}
+                  aria-hidden
+                />
+                {sessionState === 'secure'
+                  ? 'Secure'
+                  : sessionState === 'checking'
+                    ? 'Checking'
+                    : 'Sign in'}
+              </button>
+            </header>
 
-        <div className="mt-4 flex items-center gap-3">
-          <GalleryViewToggle currentView={currentView} onChange={handleViewChange} />
-        </div>
+            <div className="mt-4 flex items-center gap-3">
+              <GalleryViewToggle currentView={currentView} onChange={handleViewChange} />
+            </div>
 
-        {loading ? <p className="mt-8 text-sm text-white/80">Loading albums...</p> : null}
-        {error ? <p className="mt-8 text-sm text-rose-300">{error}</p> : null}
+            {loading ? <p className="mt-8 text-sm text-white/80">Loading albums...</p> : null}
+            {error ? <p className="mt-8 text-sm text-rose-300">{error}</p> : null}
 
-        {!loading && !error && albums.length === 0 ? (
-          <section className="mt-8 max-w-xl rounded-2xl border border-white/20 bg-white/10 p-8 backdrop-blur lg:my-auto">
-            <p className="text-2xl font-semibold">No albums yet</p>
-            <p className="mt-2 text-sm text-white/80">Add and publish albums in admin to show them here.</p>
-          </section>
-        ) : null}
+            {!loading && !error && albums.length === 0 ? (
+              <section className="mt-8 max-w-xl rounded-2xl border border-white/20 bg-white/10 p-8 backdrop-blur lg:my-auto">
+                <p className="text-2xl font-semibold">No albums yet</p>
+                <p className="mt-2 text-sm text-white/80">Add and publish albums in admin to show them here.</p>
+              </section>
+            ) : null}
 
-        {!loading && !error && activeAlbum ? (
-          currentView === 'compact' ? (
-            <CompactGalleryView
-              activeIndex={activeIndex}
-              albums={compactAlbumEntries}
-              searchQuery={compactSearchQuery}
-              blurUnclothyGenerated={blurUnclothyGenerated}
-              onSearchChange={setCompactSearchQuery}
-              onSelectAlbum={selectAlbum}
-            />
-          ) : (
-            <CinematicGalleryView
-              activeAlbum={activeAlbum}
-              headlineTop={headlineTop}
-              headlineBottom={headlineBottom}
-              albums={albums}
-              activeIndex={activeIndex}
-              albumsLength={albums.length}
-              blurUnclothyGenerated={blurUnclothyGenerated}
-              onSelectAlbum={selectAlbum}
-              onPauseAutoplay={() => setIsAutoplayPaused(true)}
-              onResumeAutoplay={() => setIsAutoplayPaused(false)}
-              onPrev={() => moveSlide(-1)}
-              onNext={() => moveSlide(1)}
-            />
-          )
-        ) : null}
-      </div>
+            {!loading && !error && activeAlbum ? (
+              currentView === 'compact' ? (
+                <CompactGalleryView
+                  activeIndex={activeIndex}
+                  albums={compactAlbumEntries}
+                  searchQuery={compactSearchQuery}
+                  blurUnclothyGenerated={blurUnclothyGenerated}
+                  onSearchChange={setCompactSearchQuery}
+                  onSelectAlbum={selectAlbum}
+                />
+              ) : (
+                <CinematicGalleryView
+                  activeAlbum={activeAlbum}
+                  headlineTop={headlineTop}
+                  headlineBottom={headlineBottom}
+                  albums={albums}
+                  activeIndex={activeIndex}
+                  albumsLength={albums.length}
+                  blurUnclothyGenerated={blurUnclothyGenerated}
+                  onSelectAlbum={selectAlbum}
+                  onPauseAutoplay={() => setIsAutoplayPaused(true)}
+                  onResumeAutoplay={() => setIsAutoplayPaused(false)}
+                  onPrev={() => moveSlide(-1)}
+                  onNext={() => moveSlide(1)}
+                />
+              )
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="absolute inset-0 z-20 cursor-default bg-transparent"
+          aria-label="Show gallery"
+          onClick={() => setChromeHidden(false)}
+          onContextMenu={(event) => event.preventDefault()}
+        />
+      )}
     </main>
   );
 }

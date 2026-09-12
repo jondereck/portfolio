@@ -118,7 +118,7 @@ function DeckCard({ album, blurUnclothyGenerated, onSelect, cardRef, className =
         blurUnclothyGenerated={blurUnclothyGenerated}
       />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(2,6,23,0.9),rgba(2,6,23,0.08)_62%)]" />
-      <div data-deck-glass="" className="pointer-events-none absolute inset-0 bg-slate-950/40 backdrop-blur-[1.5px]" aria-hidden />
+      <div data-deck-glass="" className="pointer-events-none absolute inset-0 bg-slate-950/55" aria-hidden />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
         <p className="text-[11px] uppercase tracking-[0.2em] text-white/88 [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_10px_rgba(0,0,0,0.45)]">
           {formatAlbumMediaCount(albumCounts)}
@@ -481,7 +481,7 @@ export default function CinematicAlbumDeck({
       <div
         ref={viewportRef}
         data-gallery-deck-scroll="true"
-        className="-mx-5 cursor-grab touch-none overflow-hidden px-5 pb-4 pt-3 active:cursor-grabbing sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
+        className="-mx-5 cursor-grab touch-none overflow-hidden px-5 pb-3 pt-1 active:cursor-grabbing sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
         style={{ touchAction: 'none' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
