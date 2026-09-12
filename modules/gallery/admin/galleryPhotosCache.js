@@ -4,8 +4,8 @@ const PHOTOS_STORE = 'albumPhotos';
 const MEDIA_CACHE_NAME = 'gallery-admin-media-v1';
 const MAX_WARM_URLS = 48;
 
-function cacheKey(albumId, sort) {
-  return `${Number(albumId)}:${String(sort || 'custom')}`;
+function cacheKey(albumId, sort, scope = 'owner') {
+  return `${Number(albumId)}:${String(sort || 'custom')}:${String(scope || 'owner')}`;
 }
 
 function openDb() {
@@ -30,7 +30,7 @@ function openDb() {
   });
 }
 
-export async function readCachedAlbumPhotos(albumId, sort = 'custom') {
+export async function readCachedAlbumPhotos(albumId, sort = 'custom', scope = 'owner') {
   if (!albumId) return null;
   const db = await openDb();
   if (!db) return null;
@@ -39,7 +39,7 @@ export async function readCachedAlbumPhotos(albumId, sort = 'custom') {
     try {
       const tx = db.transaction(PHOTOS_STORE, 'readonly');
       const store = tx.objectStore(PHOTOS_STORE);
-      const request = store.get(cacheKey(albumId, sort));
+      const request = store.get(cacheKey(albumId, sort, scope));
       request.onerror = () => resolve(null);
       request.onsuccess = () => {
         const row = request.result;
@@ -55,7 +55,7 @@ export async function readCachedAlbumPhotos(albumId, sort = 'custom') {
   });
 }
 
-export async function writeCachedAlbumPhotos(albumId, sort = 'custom', photos = []) {
+export async function writeCachedAlbumPhotos(albumId, sort = 'custom', photos = [], scope = 'owner') {
   if (!albumId || !Array.isArray(photos)) return;
   const db = await openDb();
   if (!db) return;
@@ -65,9 +65,10 @@ export async function writeCachedAlbumPhotos(albumId, sort = 'custom', photos = 
       const tx = db.transaction(PHOTOS_STORE, 'readwrite');
       const store = tx.objectStore(PHOTOS_STORE);
       store.put({
-        key: cacheKey(albumId, sort),
+        key: cacheKey(albumId, sort, scope),
         albumId: Number(albumId),
         sort: String(sort || 'custom'),
+        scope: String(scope || 'owner'),
         photos,
         updatedAt: Date.now(),
       });
@@ -109,12 +110,26 @@ export async function clearCachedAlbumPhotos(albumId) {
 
 function resolveWarmUrl(photo) {
   if (!photo) return '';
+
+  if (typeof photo.imageUrl === 'string' && photo.imageUrl.trim()) {
+    const raw = photo.imageUrl.trim();
+    if (raw.startsWith('/')) return raw;
+    if (typeof window !== 'undefined') {
+      try {
+        const url = new URL(raw, window.location.origin);
+        if (url.origin === window.location.origin) {
+          return `${url.pathname}${url.search}`;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   if (photo.sourceType === 'gdrive' && photo.sourceId) {
     return `/api/admin/integrations/google-drive/files/${encodeURIComponent(photo.sourceId)}`;
   }
-  if (typeof photo.imageUrl === 'string' && photo.imageUrl.startsWith('/')) {
-    return photo.imageUrl;
-  }
+
   return '';
 }
 
@@ -144,7 +159,7 @@ export async function warmAlbumMediaCache(photos = []) {
           credentials: 'same-origin',
           cache: 'force-cache',
         });
-        if (response.ok) {
+        if (response.ok || response.status === 206) {
           await cache.put(url, response.clone());
         }
       }),

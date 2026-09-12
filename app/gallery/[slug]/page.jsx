@@ -15,6 +15,12 @@ import {
 } from "@/lib/gallery-media";
 import { MEDIA_PROTECT_ELEMENT_PROPS, MEDIA_PROTECT_IMAGE_PROPS } from "@/lib/media-protect";
 import GalleryMediaFilterModal from "@/modules/gallery/admin/cms/GalleryMediaFilterModal";
+import GalleryMediaGridSkeleton from "@/modules/gallery/admin/cms/GalleryMediaGridSkeleton";
+import {
+  readCachedAlbumPhotos,
+  warmAlbumMediaCache,
+  writeCachedAlbumPhotos,
+} from "@/modules/gallery/admin/galleryPhotosCache";
 import {
   VIEWER_MODES,
   clearLocalViewerSession,
@@ -23,13 +29,18 @@ import {
   writeLocalViewerSession,
 } from "@/lib/gallery/viewer-session";
 import {
+  ArrowRight,
   ArrowUpDown,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   CloudUpload,
+  Download,
   Folder,
+  Grid3x3,
   History,
+  LayoutGrid,
+  MonitorPlay,
   Music2,
   Pause,
   Play,
@@ -88,6 +99,12 @@ const densityGridMap = {
   large:  "grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
   medium: "grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
   small:  "grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+};
+
+const densityToSkeletonColumns = {
+  large: 3,
+  medium: 4,
+  small: 5,
 };
 const timerPresetMs = [2000, 5000, 10000, 15000, 20000, 30000];
 const TIMER_OFF_MS = 0;
@@ -849,10 +866,12 @@ const SplitPanelMediaSurface = ({
 const GRID_SIZES = ["large", "medium", "small"];
 
 function GridSizeSwiper({ density, onDensityChange }) {
-  const currentIndex = GRID_SIZES.indexOf(density);
+  const currentIndex = Math.max(0, GRID_SIZES.indexOf(density));
+  const pct = GRID_SIZES.length <= 1 ? 0 : (currentIndex / (GRID_SIZES.length - 1)) * 100;
+
   return (
-    <div className="flex flex-1 items-center gap-3 sm:flex-none sm:min-w-[200px]">
-      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Grid</span>
+    <div className="flex items-center gap-3">
+      <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-slate-300" strokeWidth={2} aria-hidden />
       <input
         type="range"
         min={0}
@@ -861,9 +880,15 @@ function GridSizeSwiper({ density, onDensityChange }) {
         value={currentIndex}
         onChange={(e) => onDensityChange(GRID_SIZES[Number(e.target.value)])}
         aria-label="Grid size"
-        className="flex-1 accent-white"
+        className="h-1.5 w-full min-w-0 flex-1 cursor-pointer appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:h-[18px] [&::-webkit-slider-thumb]:w-[18px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:h-[18px] [&::-moz-range-thumb]:w-[18px] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white"
+        style={{
+          background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${pct}%, #3f4b5f ${pct}%, #3f4b5f 100%)`,
+        }}
       />
-      <span className="w-3 shrink-0 text-center text-[10px] text-slate-400">{currentIndex + 1}</span>
+      <Grid3x3 className="h-4 w-4 shrink-0 text-slate-300" strokeWidth={2} aria-hidden />
+      <span className="w-4 shrink-0 text-right text-[15px] font-semibold tabular-nums leading-none text-white">
+        {currentIndex + 1}
+      </span>
     </div>
   );
 }
@@ -966,7 +991,10 @@ export default function AlbumDetailPage({ params }) {
     });
   }, []);
   const [loading, setLoading] = useState(true);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
   const [error, setError] = useState("");
+  const [galleryPage, setGalleryPage] = useState(1);
+  const [galleryPageSize, setGalleryPageSize] = useState(24);
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
   const [isAlbumDownloadPending, setIsAlbumDownloadPending] = useState(false);
   const [audioPlayerOpen, setAudioPlayerOpen] = useState(false);
@@ -1073,6 +1101,7 @@ export default function AlbumDetailPage({ params }) {
     if (!slug) {
       setError("Album slug is missing.");
       setLoading(false);
+      setLoadingPhotos(false);
       return;
     }
 
@@ -1087,8 +1116,11 @@ export default function AlbumDetailPage({ params }) {
     };
 
     setLoading(true);
+    setLoadingPhotos(true);
     setError("");
     startGlobalLoading("Loading the album viewer");
+
+    const cacheScope = shareToken ? `share:${shareToken}` : "public";
 
     const run = async () => {
       try {
@@ -1102,6 +1134,18 @@ export default function AlbumDetailPage({ params }) {
         setAccessMode(
           albumData?.accessMode || (shareToken ? "shared" : "public"),
         );
+        setLoading(false);
+
+        const cachedPhotos = await readCachedAlbumPhotos(
+          albumData.id,
+          sort,
+          cacheScope,
+        );
+        if (Array.isArray(cachedPhotos) && cachedPhotos.length > 0) {
+          setPhotos(cachedPhotos);
+          setLoadingPhotos(false);
+          void warmAlbumMediaCache(cachedPhotos);
+        }
 
         const photosUrl = new URL(
           `/api/gallery/albums/${albumData.id}/photos`,
@@ -1120,17 +1164,19 @@ export default function AlbumDetailPage({ params }) {
             albumData?.accessMode ||
             (shareToken ? "shared" : "public"),
         );
-        setPhotos(
-          Array.isArray(photoData.photos)
-            ? photoData.photos.map((photo) =>
-                normalizeGalleryPhoto(photo, albumData.id, shareToken),
-              )
-            : [],
-        );
+        const nextPhotos = Array.isArray(photoData.photos)
+          ? photoData.photos.map((photo) =>
+              normalizeGalleryPhoto(photo, albumData.id, shareToken),
+            )
+          : [];
+        setPhotos(nextPhotos);
+        void writeCachedAlbumPhotos(albumData.id, sort, nextPhotos, cacheScope);
+        void warmAlbumMediaCache(nextPhotos);
       } catch (err) {
         setError(err.message);
-      } finally {
         setLoading(false);
+      } finally {
+        setLoadingPhotos(false);
         finalize();
       }
     };
@@ -1162,6 +1208,31 @@ export default function AlbumDetailPage({ params }) {
       dateDesc: "Newest first",
     }[sort] || "Manual";
   const filteredPhotoCount = filteredPhotos.length;
+  const galleryTotalPages = Math.max(1, Math.ceil(filteredPhotoCount / galleryPageSize));
+  const galleryStartIndex =
+    filteredPhotoCount === 0 ? 0 : (galleryPage - 1) * galleryPageSize + 1;
+  const galleryEndIndex = Math.min(filteredPhotoCount, galleryPage * galleryPageSize);
+  const pagedGalleryPhotos = useMemo(
+    () =>
+      filteredPhotos.slice(
+        (galleryPage - 1) * galleryPageSize,
+        galleryPage * galleryPageSize,
+      ),
+    [filteredPhotos, galleryPage, galleryPageSize],
+  );
+
+  useEffect(() => {
+    setGalleryPage(1);
+  }, [mediaFilter, sort, galleryPageSize, slug, shareToken]);
+
+  useEffect(() => {
+    setGalleryPage((current) => Math.min(current, galleryTotalPages));
+  }, [galleryTotalPages]);
+
+  useEffect(() => {
+    if (pagedGalleryPhotos.length === 0) return;
+    void warmAlbumMediaCache(pagedGalleryPhotos);
+  }, [pagedGalleryPhotos]);
 
   const audioTracks = useMemo(() => photos.filter((item) => isPhotoAudio(item)), [photos]);
   const currentAudioTrack = audioTracks[currentAudioTrackIndex] ?? null;
@@ -3635,68 +3706,77 @@ export default function AlbumDetailPage({ params }) {
           </div>
         </section>
 
-        <header className="overflow-hidden rounded-2xl border border-white/12 bg-slate-900/60 shadow-[0_8px_32px_rgba(2,6,23,0.4)] backdrop-blur-md">
-          {/* Top info row */}
-          <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                VIEWING MODE
-              </p>
-              <p className="mt-0.5 text-[11px] text-slate-300">
-                {totalPhotos - totalAudio} items · {totalPhotos - totalVideos - totalAudio} photos
-                {totalVideos > 0 ? ` · ${totalVideos} videos` : ""}
-                {totalAudio > 0 ? ` · ${totalAudio} audio track${totalAudio > 1 ? "s" : ""}` : ""}
+        <header className="overflow-hidden rounded-[18px] border border-slate-600/60 bg-[#0f1623] shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+          <div className="flex items-center gap-3 border-b border-slate-700/70 px-4 py-3.5 sm:px-5">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-600/80 bg-[#162033] text-white">
+              <LayoutGrid className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[17px] font-semibold leading-tight tracking-tight text-white sm:text-lg">
+                Viewing Mode
+              </h2>
+              <p className="mt-1 truncate text-[12px] leading-none text-slate-400 sm:text-[13px]">
+                {totalPhotos - totalAudio} items
+                {" • "}
+                {Math.max(0, totalPhotos - totalVideos - totalAudio)} photos
+                {totalVideos > 0 ? ` • ${totalVideos} videos` : ""}
+                {totalAudio > 0 ? ` • ${totalAudio} audio` : ""}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setFilterOpen(true)}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/8 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/90 transition active:scale-95 hover:bg-white/14"
+              aria-label={`Filter and sort: ${activeFilterLabel} / ${activeSortLabel}`}
+              title={`${activeFilterLabel} / ${activeSortLabel}`}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-600/80 bg-[#162033] text-white transition hover:bg-[#1c2940]"
             >
-              <SlidersHorizontal className="h-3 w-3" />
-              <span className="max-w-[110px] truncate">{activeFilterLabel} / {activeSortLabel}</span>
+              <SlidersHorizontal className="h-[18px] w-[18px]" strokeWidth={2} />
             </button>
           </div>
 
-          {/* Controls row */}
-          <div className="flex flex-col gap-2.5 p-3 sm:flex-row sm:items-center sm:gap-3">
+          <div className="border-b border-slate-700/70 px-4 py-4 sm:px-5">
             <GridSizeSwiper density={density} onDensityChange={setDensity} />
+          </div>
 
-            {/* Action buttons */}
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
+          <div
+            className={`grid gap-2.5 p-3.5 sm:gap-3 sm:p-4 ${
+              accessMode !== "public" ? "grid-cols-3" : "grid-cols-2"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={openSlideshowOrResume}
+              disabled={filteredPhotos.length === 0}
+              className="inline-flex h-11 min-w-0 items-center justify-between gap-1.5 rounded-xl border border-emerald-400/55 bg-[#0c3329] px-2.5 text-[12px] font-semibold text-white transition hover:bg-[#0f3f33] disabled:cursor-not-allowed disabled:opacity-40 sm:px-3.5 sm:text-sm"
+            >
+              <Play className="h-3.5 w-3.5 shrink-0 fill-emerald-300 text-emerald-300" />
+              <span className="truncate">Continue</span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
+            </button>
+
+            <button
+              type="button"
+              onClick={startFreshSlideshow}
+              disabled={filteredPhotos.length === 0}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-500/70 bg-transparent px-2.5 text-[12px] font-medium text-white transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3.5 sm:text-sm"
+            >
+              <MonitorPlay className="h-4 w-4 shrink-0" />
+              <span className="truncate">New Slideshow</span>
+            </button>
+
+            {accessMode !== "public" ? (
               <button
                 type="button"
-                onClick={openSlideshowOrResume}
-                disabled={filteredPhotos.length === 0}
-                className="inline-flex h-9 items-center justify-center rounded-full border border-emerald-400/35 bg-emerald-500/15 px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200 transition active:scale-95 hover:bg-emerald-500/25 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={handleDownloadAlbumZip}
+                disabled={isAlbumDownloadPending || !album?.id}
+                className="inline-flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-sky-400/45 bg-transparent px-2.5 text-[12px] font-medium text-white transition hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3.5 sm:text-sm"
               >
-                {isResumableSession(savedViewerSession) ||
-                isResumableSession(resumePrompt?.session)
-                  ? "Continue"
-                  : "Slideshow"}
-              </button>
-              {isResumableSession(savedViewerSession) ||
-              isResumableSession(resumePrompt?.session) ? (
-                <button
-                  type="button"
-                  onClick={startFreshSlideshow}
-                  disabled={filteredPhotos.length === 0}
-                  className="inline-flex h-9 items-center justify-center rounded-full border border-white/20 bg-white/8 px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85 transition active:scale-95 hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  New slideshow
-                </button>
-              ) : null}
-              {accessMode !== "public" ? (
-                <button
-                  type="button"
-                  onClick={handleDownloadAlbumZip}
-                  disabled={isAlbumDownloadPending || !album?.id}
-                  className="inline-flex h-9 items-center justify-center rounded-full border border-sky-400/35 bg-sky-500/15 px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-200 transition active:scale-95 hover:bg-sky-500/25 disabled:cursor-not-allowed disabled:opacity-40"
-                >
+                <Download className="h-4 w-4 shrink-0" />
+                <span className="truncate">
                   {isAlbumDownloadPending ? "Preparing…" : "Download ZIP"}
-                </button>
-              ) : null}
-            </div>
+                </span>
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -3705,7 +3785,13 @@ export default function AlbumDetailPage({ params }) {
         ) : null}
         {error ? <p className="text-sm text-rose-300">{error}</p> : null}
 
-        {!loading && !error && filteredPhotos.length === 0 ? (
+        {!loading && !error && loadingPhotos && photos.length === 0 ? (
+          <GalleryMediaGridSkeleton
+            gridColumns={densityToSkeletonColumns[density] || 4}
+          />
+        ) : null}
+
+        {!loading && !error && !loadingPhotos && filteredPhotos.length === 0 ? (
           <section className="rounded-2xl border border-white/15 bg-slate-900/50 p-10 text-center text-slate-200">
             <p className="text-lg font-semibold">No media in this filter</p>
             <p className="mt-1 text-sm text-slate-300">
@@ -3715,16 +3801,19 @@ export default function AlbumDetailPage({ params }) {
           </section>
         ) : null}
 
-        <section
-          className={`grid gap-4 ${densityGridMap[density] || densityGridMap.medium}`}
-        >
-          {filteredPhotos.map((photo, index) => (
+        {!loading && !error && filteredPhotos.length > 0 ? (
+          <>
+            <section
+              className={`grid gap-4 ${densityGridMap[density] || densityGridMap.medium}`}
+            >
+              {pagedGalleryPhotos.map((photo, index) => {
+                const absoluteIndex = (galleryPage - 1) * galleryPageSize + index;
+                return (
             <article
               key={photo.id}
               className="group cursor-pointer overflow-hidden rounded-2xl border border-white/15 bg-slate-900/65 shadow-lg shadow-slate-950/40 transition duration-300 hover:-translate-y-1 hover:border-white/35"
-              onClick={() => openViewerAt(index, { mode: "focus" })}
-            >
-              <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+              onClick={() => openViewerAt(absoluteIndex, { mode: "focus" })}
+            >              <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
                 {isPhotoVideo(photo) ? (
                   <VideoPoster
                     src={photo.imageUrl}
@@ -3757,8 +3846,68 @@ export default function AlbumDetailPage({ params }) {
                 ) : null}
               </div>
             </article>
-          ))}
-        </section>
+                );
+              })}
+            </section>
+
+            <div className="mt-2 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/50 px-4 py-3 text-center sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:text-left">
+              <div className="text-sm text-slate-300">
+                <span className="font-medium text-white">Showing</span>{" "}
+                <span className="tabular-nums">
+                  {galleryStartIndex}–{galleryEndIndex}
+                </span>{" "}
+                <span>of</span>{" "}
+                <span className="tabular-nums font-medium text-white">{filteredPhotoCount}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+                <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+                  <span className="hidden sm:inline">Per page</span>
+                  <select
+                    value={galleryPageSize}
+                    onChange={(event) => {
+                      const nextSize = Number(event.target.value);
+                      setGalleryPageSize(
+                        Number.isFinite(nextSize) && nextSize > 0 ? nextSize : 24,
+                      );
+                      setGalleryPage(1);
+                    }}
+                    className="h-10 rounded-2xl border border-white/15 bg-slate-950/70 px-3 text-sm text-white outline-none"
+                  >
+                    <option value={24}>24</option>
+                    <option value={48}>48</option>
+                    <option value={72}>72</option>
+                  </select>
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGalleryPage((current) => Math.max(1, current - 1))}
+                    disabled={galleryPage <= 1}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/15 bg-slate-950/70 px-3 text-sm font-medium text-white disabled:opacity-40"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-sm text-slate-300">
+                    <span className="tabular-nums font-medium text-white">{galleryPage}</span> /{" "}
+                    <span className="tabular-nums">{galleryTotalPages}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGalleryPage((current) => Math.min(galleryTotalPages, current + 1))
+                    }
+                    disabled={galleryPage >= galleryTotalPages}
+                    className="inline-flex h-10 items-center justify-center rounded-2xl border border-white/15 bg-slate-950/70 px-3 text-sm font-medium text-white disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
 
         <GalleryMediaFilterModal
           open={filterOpen}
