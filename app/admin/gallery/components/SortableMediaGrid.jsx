@@ -18,17 +18,51 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Move, Music2, ScanLine } from 'lucide-react';
-import MediaPreview from './MediaPreview';
-import { isPhotoAudio, shouldBlurPhoto } from '@/lib/gallery-media';
+import { GripVertical } from 'lucide-react';
+import GalleryMediaCard from '@/modules/gallery/admin/cms/GalleryMediaCard';
 
 const TOUCH_MULTI_SELECT_DISTANCE = 14;
 
+const MOBILE_GRID_COL_CLASS = {
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+};
+
+const SM_GRID_COL_CLASS = {
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-3',
+  4: 'sm:grid-cols-4',
+  5: 'sm:grid-cols-5',
+  6: 'sm:grid-cols-6',
+  7: 'sm:grid-cols-7',
+  8: 'sm:grid-cols-8',
+};
+
+const LG_GRID_COL_CLASS = {
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+  5: 'lg:grid-cols-5',
+  6: 'lg:grid-cols-6',
+  7: 'lg:grid-cols-7',
+  8: 'lg:grid-cols-8',
+};
+
+const XL_GRID_COL_CLASS = {
+  2: 'xl:grid-cols-2',
+  3: 'xl:grid-cols-3',
+  4: 'xl:grid-cols-4',
+  5: 'xl:grid-cols-5',
+  6: 'xl:grid-cols-6',
+  7: 'xl:grid-cols-7',
+  8: 'xl:grid-cols-8',
+};
+
 const SortableMediaCard = memo(function SortableMediaCard({
   photo,
-  index,
   isSelected,
-  isCover,
+  selectionMode,
   isDragging,
   isDropTarget,
   dragActive,
@@ -36,7 +70,6 @@ const SortableMediaCard = memo(function SortableMediaCard({
   onSelectRange,
   touchSelectStateRef,
   suppressNextClickRef,
-  onSetCover,
   onPreview,
   blurUnclothyGenerated,
 }) {
@@ -60,29 +93,23 @@ const SortableMediaCard = memo(function SortableMediaCard({
     transition,
   };
 
-  const handleCardClick = (event) => {
-    if (suppressNextClickRef.current) {
-      suppressNextClickRef.current = false;
-      return;
-    }
-    if (isDragging) return;
-    const target = event.target;
-    if (target instanceof Element && target.closest('button,input,label,a,video,audio')) {
-      return;
-    }
-    onToggleSelect(photo.id, { shiftKey: event.shiftKey });
-  };
-
   return (
-    <article
+    <div
       ref={setNodeRef}
       style={style}
       data-photo-id={photo.id}
-      onClick={handleCardClick}
+      className={`group relative select-none will-change-transform ${
+        isDragging ? 'z-20 opacity-30' : ''
+      } ${isDropTarget ? 'z-10 scale-[1.01]' : ''}`}
       onPointerDown={(event) => {
         if (event.pointerType !== 'touch' || isDragging) return;
         const target = event.target;
-        if (target instanceof Element && target.closest('button,input,label,a,video,audio,[data-drag-handle]')) {
+        if (
+          target instanceof Element &&
+          target.closest(
+            'button,input,label,a,video,audio,[data-drag-handle],[data-gallery-select-toggle],[data-gallery-media-control]',
+          )
+        ) {
           return;
         }
         event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -157,186 +184,81 @@ const SortableMediaCard = memo(function SortableMediaCard({
         };
         suppressNextClickRef.current = false;
       }}
-      className={`relative overflow-hidden rounded-2xl border bg-white shadow-sm transition-[transform,opacity,box-shadow,border-color,background-color] duration-200 will-change-transform dark:bg-slate-900 ${
-        isDragging
-          ? 'z-20 scale-[0.97] border-slate-400/80 opacity-20 shadow-none ring-2 ring-slate-300/80 dark:border-slate-500 dark:ring-slate-700/70'
-          : isDropTarget
-            ? 'scale-[1.01] border-blue-500 bg-blue-50/90 shadow-[0_18px_40px_-24px_rgba(37,99,235,0.7)] ring-2 ring-blue-300 dark:border-blue-400 dark:bg-blue-950/25 dark:ring-blue-700/70'
-            : isSelected
-              ? 'border-blue-500 ring-2 ring-blue-200 dark:border-blue-400 dark:ring-blue-900/40'
-              : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500'
-      } ${dragActive ? 'border-dashed dark:border-dashed' : ''}`}
     >
-      {dragActive ? (
+      {isDropTarget ? (
         <span
-          className={`pointer-events-none absolute inset-0 transition ${
-            isDropTarget
-              ? 'bg-blue-500/8'
-              : 'bg-transparent'
-          }`}
+          className="pointer-events-none absolute inset-0 z-20 rounded-xl ring-2 ring-blue-400 dark:ring-blue-500"
           aria-hidden
         />
       ) : null}
-      {isDropTarget ? (
-        <>
-          <span className="pointer-events-none absolute inset-x-3 top-2 h-1 rounded bg-blue-500/90" aria-hidden />
-          <span className="pointer-events-none absolute inset-x-3 bottom-2 h-1 rounded bg-blue-500/90" aria-hidden />
-          <span className="pointer-events-none absolute inset-y-3 left-2 w-1 rounded bg-blue-500/80" aria-hidden />
-          <span className="pointer-events-none absolute inset-y-3 right-2 w-1 rounded bg-blue-500/80" aria-hidden />
-          <span className="pointer-events-none absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-blue-400/80" aria-hidden />
-        </>
-      ) : null}
 
-      <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700/80 md:px-3 md:py-3">
-        <label
-          className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-600 touch-manipulation dark:text-slate-300 md:text-xs"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            checked={isSelected}
-            onChange={(event) => onToggleSelect(photo.id, { shiftKey: event.shiftKey })}
-            onClick={(event) => event.stopPropagation()}
-            aria-label={`Select media ${index + 1}`}
-          />
-          Select
-        </label>
-
-        <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 md:text-[11px]">
-          #{index + 1}
-        </span>
+      <div
+        className={dragActive && !isDragging ? 'rounded-xl border border-dashed border-slate-300 dark:border-slate-600' : ''}
+        onClickCapture={(event) => {
+          if (!suppressNextClickRef.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+          suppressNextClickRef.current = false;
+        }}
+      >
+        <GalleryMediaCard
+          photo={photo}
+          selected={isSelected}
+          selectionMode={selectionMode}
+          blurUnclothyGenerated={blurUnclothyGenerated}
+          onOpenPreview={() => {
+            if (isDragging) return;
+            onPreview?.(photo);
+          }}
+          onToggleSelect={(event) => {
+            if (isDragging) return;
+            onToggleSelect?.(photo.id, { shiftKey: Boolean(event?.shiftKey) });
+          }}
+        />
       </div>
 
-      <div className="grid gap-3 p-3 md:gap-3 md:p-3">
-        <div className="relative aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 md:aspect-[4/3]">
-          <button
-            type="button"
-            className="block h-full w-full touch-manipulation"
-            onClick={(event) => {
-              event.stopPropagation();
-              onPreview?.(photo);
-            }}
-            aria-label={`View ${photo.caption || `media ${photo.id}`}`}
-          >
-            {isPhotoAudio(photo) ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-100 p-4 dark:bg-slate-800">
-                <Music2 className="h-10 w-10 text-slate-400 dark:text-slate-500" />
-                <p className="max-w-full truncate text-xs text-slate-500 dark:text-slate-400">
-                  {photo.originalFilename || photo.caption || 'Audio'}
-                </p>
-              </div>
-            ) : (
-              <MediaPreview
-                url={photo.imageUrl}
-                mimeType={photo.mimeType}
-                sourceType={photo.sourceType}
-                sourceId={photo.sourceId}
-                alt={photo.caption || `Media ${photo.id}`}
-                className={`h-full w-full bg-slate-100 object-contain dark:bg-slate-800 ${
-                  shouldBlurPhoto(photo, { blurEnabled: blurUnclothyGenerated }) ? 'blur-md' : ''
-                }`}
-                controls={false}
-              />
-            )}
-          </button>
-
-          <button
-            ref={setActivatorNodeRef}
-            type="button"
-            {...attributes}
-            {...listeners}
-            data-drag-handle
-            className={`absolute bottom-2 right-2 inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-full border px-3 py-2 text-[10px] font-semibold shadow-sm transition active:scale-[0.97] touch-none select-none md:min-h-9 md:min-w-9 md:px-2.5 md:py-1.5 md:text-[11px] ${
-              isDropTarget || dragActive
-                ? 'border-blue-300 bg-white/95 text-blue-700 backdrop-blur dark:border-blue-700 dark:bg-slate-950/90 dark:text-blue-200'
-                : 'border-slate-300 bg-white/92 text-slate-700 backdrop-blur hover:bg-white dark:border-slate-600 dark:bg-slate-950/88 dark:text-slate-200 dark:hover:bg-slate-950'
-            }`}
-            onClick={(event) => event.stopPropagation()}
-            style={{ touchAction: 'none' }}
-            aria-label={`Drag to reorder ${photo.caption || `media ${photo.id}`}`}
-          >
-            <GripVertical className="h-3.5 w-3.5" />
-            <span className="md:hidden">Drag</span>
-          </button>
-        </div>
-
-        {isCover ? (
-          <div className="flex justify-center">
-            <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-              Cover
-            </span>
-          </div>
-        ) : null}
-
-        {onSetCover && !isPhotoAudio(photo) ? (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="shrink-0 rounded-md border border-slate-300 px-2.5 py-1 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-              onClick={(event) => {
-                event.stopPropagation();
-                onSetCover(photo.id);
-              }}
-            >
-              Set cover
-            </button>
-          </div>
-        ) : null}
-      </div>
-    </article>
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        {...attributes}
+        {...listeners}
+        data-drag-handle
+        className={`absolute bottom-2 right-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition touch-none select-none ${
+          isDropTarget || dragActive
+            ? 'border-blue-300 bg-white text-blue-700 opacity-100 dark:border-blue-700 dark:bg-slate-950 dark:text-blue-200'
+            : 'border-slate-200 bg-white/95 text-slate-600 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-950/90 dark:text-slate-200'
+        }`}
+        onClick={(event) => event.stopPropagation()}
+        style={{ touchAction: 'none' }}
+        aria-label={`Drag to reorder ${photo.caption || `media ${photo.id}`}`}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }, (prevProps, nextProps) => (
   prevProps.photo === nextProps.photo &&
-  prevProps.index === nextProps.index &&
   prevProps.isSelected === nextProps.isSelected &&
-  prevProps.isCover === nextProps.isCover &&
+  prevProps.selectionMode === nextProps.selectionMode &&
   prevProps.isDragging === nextProps.isDragging &&
   prevProps.isDropTarget === nextProps.isDropTarget &&
   prevProps.dragActive === nextProps.dragActive &&
   prevProps.blurUnclothyGenerated === nextProps.blurUnclothyGenerated &&
   prevProps.onToggleSelect === nextProps.onToggleSelect &&
-  prevProps.onSetCover === nextProps.onSetCover &&
   prevProps.onPreview === nextProps.onPreview
 ));
 
 const OverlayCard = memo(function OverlayCard({ photo, draggingCount, blurUnclothyGenerated }) {
   if (!photo) return null;
   return (
-    <article className="relative w-[220px] scale-[1.04] overflow-hidden rounded-2xl border border-slate-300/90 bg-white/96 p-2.5 shadow-[0_28px_80px_-24px_rgba(15,23,42,0.75)] backdrop-blur dark:border-slate-500 dark:bg-slate-900/95 sm:w-[250px]">
+    <div className="relative w-[180px] scale-[1.03] sm:w-[200px]">
       {draggingCount > 1 ? (
-        <span className="absolute right-2 top-2 z-10 rounded-full bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white">
+        <span className="absolute -right-1 -top-1 z-10 inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[11px] font-semibold text-white shadow">
           {draggingCount}
         </span>
       ) : null}
-      <div className="mb-2 aspect-[4/3] overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
-        {isPhotoAudio(photo) ? (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
-            <Music2 className="h-8 w-8 text-slate-400 dark:text-slate-500" />
-            <p className="max-w-full truncate text-xs text-slate-500 dark:text-slate-400">
-              {photo.originalFilename || photo.caption || 'Audio'}
-            </p>
-          </div>
-        ) : (
-          <MediaPreview
-            url={photo.imageUrl}
-            mimeType={photo.mimeType}
-            sourceType={photo.sourceType}
-            sourceId={photo.sourceId}
-            alt={photo.caption || `Media ${photo.id}`}
-            className={`h-full w-full bg-slate-100 object-contain dark:bg-slate-800 ${
-              shouldBlurPhoto(photo, { blurEnabled: blurUnclothyGenerated }) ? 'blur-md' : ''
-            }`}
-            controls={false}
-          />
-        )}
-      </div>
-      <p className="truncate text-xs font-medium">{photo.caption || 'Untitled media'}</p>
-      <div className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-        <Move className="h-3 w-3" />
-        Drop into the blue guide
-      </div>
-    </article>
+      <GalleryMediaCard photo={photo} selected blurUnclothyGenerated={blurUnclothyGenerated} />
+    </div>
   );
 });
 
@@ -394,14 +316,13 @@ function getPointFromEvent(event) {
 export default function SortableMediaGrid({
   items,
   selectedIds,
-  coverPhotoId,
   onItemsChange,
   onToggleSelect,
   onSelectRange,
-  onSetCover,
   onPreview,
   onDragStateChange,
   blurUnclothyGenerated = true,
+  gridColumns = 4,
 }) {
   const [activeId, setActiveId] = useState(null);
   const [draggedIds, setDraggedIds] = useState([]);
@@ -427,8 +348,17 @@ export default function SortableMediaGrid({
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const draggedSet = useMemo(() => new Set(draggedIds), [draggedIds]);
   const dragActive = activeId !== null;
+  const selectionMode = selectedSet.size > 0;
   const visibleItems = dragActive ? previewItems : items;
   const sortableIds = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
+  const normalizedGridColumns = Math.max(2, Math.min(8, Number(gridColumns) || 4));
+  const mobileGridColumns = Math.max(2, Math.min(4, normalizedGridColumns));
+  const gridClassName = [
+    MOBILE_GRID_COL_CLASS[mobileGridColumns] || 'grid-cols-2',
+    SM_GRID_COL_CLASS[normalizedGridColumns] || 'sm:grid-cols-4',
+    LG_GRID_COL_CLASS[normalizedGridColumns] || 'lg:grid-cols-4',
+    XL_GRID_COL_CLASS[normalizedGridColumns] || 'xl:grid-cols-4',
+  ].join(' ');
 
   useEffect(() => {
     if (!dragActive) {
@@ -641,34 +571,16 @@ export default function SortableMediaGrid({
     >
       <SortableContext items={sortableIds} strategy={rectSortingStrategy}>
         <div
-          className={`relative grid grid-cols-2 gap-3 overscroll-y-contain sm:grid-cols-3 md:grid-cols-4 md:gap-2 lg:grid-cols-5 xl:grid-cols-6 ${
-            dragActive ? 'rounded-xl bg-[linear-gradient(to_right,rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:20px_20px] p-3' : ''
-          }`}
+          className={`relative grid gap-3 overscroll-y-contain px-4 pb-6 sm:px-5 lg:px-6 ${gridClassName} ${
+            selectedSet.size > 0 ? 'pb-32 lg:pb-28' : ''
+          } ${dragActive ? 'rounded-xl bg-[linear-gradient(to_right,rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:20px_20px]' : ''}`}
         >
-          {dragActive ? (
-            <div className="pointer-events-none col-span-full mb-1 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-blue-300/90 bg-white/80 px-3 py-2 text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur dark:border-blue-800/70 dark:bg-slate-950/80 dark:text-slate-300">
-              <span className="inline-flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
-                <ScanLine className="h-3.5 w-3.5" />
-                Blue guides show the drop target
-              </span>
-              <span className="hidden sm:inline text-slate-400 dark:text-slate-500">|</span>
-              <span className="inline-flex items-center gap-1.5">
-                <GripVertical className="h-3.5 w-3.5" />
-                {draggedIds.length > 1 ? 'Move the selected stack together' : 'Drag with the handle for smoother control'}
-              </span>
-            </div>
-          ) : (
-            <div className="col-span-full rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-[11px] font-medium text-slate-600 dark:border-slate-700/80 dark:bg-slate-900/60 dark:text-slate-300 md:hidden">
-              Hold the Drag button, then move your finger. Select and Set cover stay tappable.
-            </div>
-          )}
-          {visibleItems.map((photo, index) => (
+          {visibleItems.map((photo) => (
             <SortableMediaCard
               key={photo.id}
               photo={photo}
-              index={index}
               isSelected={selectedSet.has(photo.id)}
-              isCover={coverPhotoId === photo.id}
+              selectionMode={selectionMode}
               isDragging={draggedSet.has(photo.id)}
               isDropTarget={overId === photo.id && !draggedSet.has(photo.id)}
               dragActive={dragActive}
@@ -676,7 +588,6 @@ export default function SortableMediaGrid({
               onSelectRange={onSelectRange}
               touchSelectStateRef={touchSelectStateRef}
               suppressNextClickRef={suppressNextClickRef}
-              onSetCover={onSetCover}
               onPreview={onPreview}
               blurUnclothyGenerated={blurUnclothyGenerated}
             />

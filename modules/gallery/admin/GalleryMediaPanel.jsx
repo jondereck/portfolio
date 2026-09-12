@@ -18,9 +18,12 @@ import {
   GalleryAlbumSwitchSheet,
   GalleryCmsHeader,
   GalleryCmsModal,
+  readGallerySidebarCollapsed,
+  writeGallerySidebarCollapsed,
   GalleryCmsShell,
   GalleryInspectorPanel,
   GalleryMediaGrid,
+  GalleryMediaGridSkeleton,
   GalleryMediaFilterModal,
   GalleryMediaToolbar,
   GalleryMobileTabs,
@@ -96,7 +99,6 @@ function createPendingPreviewTask(albumId, photoId, options = {}) {
 }
 
 export default function GalleryMediaPanel({ controller, embedded = false }) {
-  const sidebarCollapsedStorageKey = 'gallery:sidebarCollapsed:v2';
   const mediaGridColumnsStorageKey = 'gallery:mediaGridColumns:v1';
   const {
     albums,
@@ -253,20 +255,19 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       setMediaGridColumns(Math.max(2, Math.min(8, storedGridColumns)));
     }
 
-    const storedSidebarCollapsed = window.localStorage.getItem(sidebarCollapsedStorageKey);
+    const storedSidebarCollapsed = readGallerySidebarCollapsed(null);
     if (storedSidebarCollapsed !== null) {
-      setManualSidebarCollapsed(storedSidebarCollapsed === 'true');
+      setManualSidebarCollapsed(storedSidebarCollapsed);
     }
-  }, [mediaGridColumnsStorageKey, sidebarCollapsedStorageKey]);
+  }, [mediaGridColumnsStorageKey]);
 
   useEffect(() => {
     startUnclothyRunner?.();
   }, [startUnclothyRunner]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(sidebarCollapsedStorageKey, manualSidebarCollapsed ? 'true' : 'false');
-  }, [manualSidebarCollapsed, sidebarCollapsedStorageKey]);
+    writeGallerySidebarCollapsed(manualSidebarCollapsed);
+  }, [manualSidebarCollapsed]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -821,11 +822,10 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
                 />
 
               {loadingPhotos ? (
-                <div className="px-4 pb-6 sm:px-5 lg:px-6">
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400">
-                    Loading media...
-                  </div>
-                </div>
+                <GalleryMediaGridSkeleton
+                  gridColumns={mediaGridColumns}
+                  inspectorOpen={detailsOpenDesktop}
+                />
               ) : !selectedAlbum ? (
                 <div className="px-4 pb-6 sm:px-5 lg:px-6">
                   <GalleryEmptyState

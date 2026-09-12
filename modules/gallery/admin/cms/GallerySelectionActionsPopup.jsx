@@ -12,9 +12,11 @@ export default function GallerySelectionActionsPopup({
   onMove,
   onCreateAlbum,
   onBlurModeChange,
+  onSetCover,
   onDelete,
   onClear,
   savingBlurMode = false,
+  canSetCover = false,
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -29,12 +31,12 @@ export default function GallerySelectionActionsPopup({
 
   const canMove = Boolean(targetAlbumName) && !disabled;
   const blurDisabled = disabled || savingBlurMode || typeof onBlurModeChange !== 'function';
+  const setCoverDisabled = disabled || !canSetCover || typeof onSetCover !== 'function';
 
   return (
     <>
       {/* Mobile: collapsed pill bar → expandable bottom sheet */}
       <div className="lg:hidden">
-        {/* Collapsed dark pill bar */}
         {!expanded ? (
           <div className="fixed inset-x-0 bottom-3 z-40 px-3">
             <div
@@ -77,7 +79,6 @@ export default function GallerySelectionActionsPopup({
           </div>
         ) : null}
 
-        {/* Expanded bottom sheet */}
         {expanded ? (
           <>
             <div
@@ -108,9 +109,6 @@ export default function GallerySelectionActionsPopup({
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Move, add to album, or set blur without leaving the grid.
-              </p>
 
               <label className="mb-2 mt-5 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                 Add to album
@@ -125,29 +123,43 @@ export default function GallerySelectionActionsPopup({
                 <ChevronsUpDown className="h-4 w-4 text-slate-400" />
               </button>
 
-              <label className="mb-2 mt-4 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                Blur mode
-              </label>
-              <select
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
-                defaultValue=""
-                disabled={blurDisabled}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  if (!nextValue) return;
-                  onBlurModeChange?.(nextValue);
-                  event.target.value = '';
-                }}
-              >
-                <option value="" disabled>
-                  {savingBlurMode ? 'Saving...' : 'Set blur mode'}
-                </option>
-                <option value="auto">Auto</option>
-                <option value="force_blur">Force blur</option>
-                <option value="force_unblur">Force unblur</option>
-              </select>
+              {typeof onBlurModeChange === 'function' ? (
+                <>
+                  <label className="mb-2 mt-4 block text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    Blur mode
+                  </label>
+                  <select
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
+                    defaultValue=""
+                    disabled={blurDisabled}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      if (!nextValue) return;
+                      onBlurModeChange?.(nextValue);
+                      event.target.value = '';
+                    }}
+                  >
+                    <option value="" disabled>
+                      {savingBlurMode ? 'Saving...' : 'Set blur mode'}
+                    </option>
+                    <option value="auto">Auto</option>
+                    <option value="force_blur">Force blur</option>
+                    <option value="force_unblur">Force unblur</option>
+                  </select>
+                </>
+              ) : null}
 
               <div className="mt-5 grid grid-cols-2 gap-2.5">
+                {typeof onSetCover === 'function' ? (
+                  <button
+                    type="button"
+                    className="inline-flex h-12 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                    onClick={onSetCover}
+                    disabled={setCoverDisabled}
+                  >
+                    Set cover
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-900 bg-slate-900 px-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:border-slate-50 dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200"
@@ -197,9 +209,6 @@ export default function GallerySelectionActionsPopup({
               <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
                 {selectedCount} media selected
               </p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                Bulk actions stay visible while browsing the grid.
-              </p>
             </div>
           </div>
 
@@ -218,31 +227,47 @@ export default function GallerySelectionActionsPopup({
             </button>
           </div>
 
-          <div className="min-w-[180px] rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
-            <label className="mb-1 block px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-              Blur mode
-            </label>
-            <select
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
-              defaultValue=""
-              disabled={blurDisabled}
-              onChange={(event) => {
-                const nextValue = event.target.value;
-                if (!nextValue) return;
-                onBlurModeChange?.(nextValue);
-                event.target.value = '';
-              }}
-            >
-              <option value="" disabled>
-                {savingBlurMode ? 'Saving...' : 'Set mode'}
-              </option>
-              <option value="auto">Auto</option>
-              <option value="force_blur">Force blur</option>
-              <option value="force_unblur">Force unblur</option>
-            </select>
-          </div>
+          {typeof onBlurModeChange === 'function' ? (
+            <div className="min-w-[180px] rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
+              <label className="mb-1 block px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                Blur mode
+              </label>
+              <select
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50"
+                defaultValue=""
+                disabled={blurDisabled}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  if (!nextValue) return;
+                  onBlurModeChange?.(nextValue);
+                  event.target.value = '';
+                }}
+              >
+                <option value="" disabled>
+                  {savingBlurMode ? 'Saving...' : 'Set mode'}
+                </option>
+                <option value="auto">Auto</option>
+                <option value="force_blur">Force blur</option>
+                <option value="force_unblur">Force unblur</option>
+              </select>
+            </div>
+          ) : null}
 
-          <div className="grid w-[220px] shrink-0 grid-cols-2 gap-2">
+          <div
+            className={`grid shrink-0 gap-2 ${
+              typeof onSetCover === 'function' ? 'w-[280px] grid-cols-2' : 'w-[220px] grid-cols-2'
+            }`}
+          >
+            {typeof onSetCover === 'function' ? (
+              <button
+                type="button"
+                className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-2xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                onClick={onSetCover}
+                disabled={setCoverDisabled}
+              >
+                Set cover
+              </button>
+            ) : null}
             <button
               type="button"
               className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-2xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"

@@ -26,7 +26,6 @@ export default function GalleryMobileWorkspaceNav({ tabs, activeTab, onSelectTab
                   onClick={() => onSelectTab(tab.id)}
                 >
                   <span className="block text-xs font-semibold uppercase tracking-[0.18em]">{tab.label}</span>
-                  <span className="mt-1 hidden text-[11px] leading-4 opacity-80 sm:block">{tab.description}</span>
                 </button>
               </div>
             );

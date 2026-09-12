@@ -44,6 +44,7 @@ function buildSnapshot() {
     retryTask,
     stopTrackingActive,
     startRunner,
+    stopRunner,
     refreshTasks,
   };
 }
@@ -151,6 +152,11 @@ export async function refreshTasks() {
   setState({ loading: true, error: null });
   try {
     const response = await fetch('/api/admin/integrations/unclothy/tasks', { method: 'GET', cache: 'no-store' });
+    if (response.status === 401 || response.status === 403) {
+      stopRunner();
+      setState({ loading: false, error: null });
+      return;
+    }
     const payload = await parseResponse(response, 'Unable to load Unclothy tasks.');
     const result = getResult(payload);
     const derived = deriveTaskState(Array.isArray(result?.tasks) ? result.tasks : []);
@@ -232,22 +238,46 @@ export function retryActive() {
   }
 }
 
-export function startRunner() {
-  hydrateFromLocalStorage();
-  if (polling) return;
-  polling = true;
-  void (async () => {
-    await refreshTasks();
-    await tickLocalWorkerIfNeeded();
-    await refreshTasks();
-  })();
+async function runPollCycle() {
+  await refreshTasks();
+  if (!polling || !hasRunnableTasks()) return;
+  await tickLocalWorkerIfNeeded();
+  await refreshTasks();
+}
+
+function ensurePollTimer() {
+  if (pollTimer || typeof window === 'undefined') return;
   pollTimer = window.setInterval(() => {
     void (async () => {
-      await refreshTasks();
-      await tickLocalWorkerIfNeeded();
-      await refreshTasks();
+      await runPollCycle();
+      syncPollingWithTasks();
     })();
   }, pollIntervalMs);
+}
+
+function syncPollingWithTasks() {
+  if (hasRunnableTasks()) {
+    ensurePollTimer();
+    return;
+  }
+  if (pollTimer) {
+    window.clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  polling = false;
+}
+
+export function startRunner() {
+  hydrateFromLocalStorage();
+  if (typeof window === 'undefined') return;
+  // Already actively polling runnable work.
+  if (polling && pollTimer) return;
+  polling = true;
+  void (async () => {
+    await runPollCycle();
+    if (!polling) return;
+    syncPollingWithTasks();
+  })();
 }
 
 export function stopRunner() {

@@ -13,6 +13,8 @@ import {
   GalleryCmsModal,
   GalleryCmsShell,
   GalleryMobileTabs,
+  readGallerySidebarCollapsed,
+  writeGallerySidebarCollapsed,
 } from './cms';
 
 const mobileTabs = [
@@ -133,17 +135,13 @@ function ToggleRow({ id, title, description, checked, onChange, disabled = false
 }
 
 export default function GalleryAlbumsPanel({ controller, embedded = false }) {
-  const sidebarCollapsedStorageKey = 'gallery:sidebarCollapsed:v1';
   const [activeTab, setActiveTab] = useState('manage');
   const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
   const [albumSwitchOpen, setAlbumSwitchOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [siteOrigin, setSiteOrigin] = useState('');
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
-  const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(sidebarCollapsedStorageKey) === 'true';
-  });
+  const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
 
   const platformOptions = useMemo(
     () => [
@@ -184,9 +182,15 @@ export default function GalleryAlbumsPanel({ controller, embedded = false }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(sidebarCollapsedStorageKey, manualSidebarCollapsed ? 'true' : 'false');
-  }, [manualSidebarCollapsed, sidebarCollapsedStorageKey]);
+    const storedSidebarCollapsed = readGallerySidebarCollapsed(null);
+    if (storedSidebarCollapsed !== null) {
+      setManualSidebarCollapsed(storedSidebarCollapsed);
+    }
+  }, []);
+
+  useEffect(() => {
+    writeGallerySidebarCollapsed(manualSidebarCollapsed);
+  }, [manualSidebarCollapsed]);
 
   const loadGallerySettings = useCallback(async () => {
     try {

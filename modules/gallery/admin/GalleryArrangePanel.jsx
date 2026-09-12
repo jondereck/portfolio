@@ -4,28 +4,48 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import ConfirmModal from '@/components/ConfirmModal';
 import SortableMediaGrid from '@/app/admin/gallery/components/SortableMediaGrid';
 import GalleryArrangeMobileControls from '@/modules/gallery/admin/GalleryArrangeMobileControls';
+import GalleryDriveImportSection from './GalleryDriveImportSection';
 import GalleryMediaViewer from './GalleryMediaViewer';
 import GalleryCreateAlbumModal from './GalleryCreateAlbumModal';
+import GalleryUploadDropzone from './GalleryUploadDropzone';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
-import {
-  GalleryEmptyState,
-  fetchJson,
-  GalleryPageHeader,
-  GalleryPanelCard,
-  buttonStyles,
-  ghostButtonStyles,
-} from './galleryAdminShared';
+import { isPhotoAudio, shouldBlurPhoto } from '@/lib/gallery-media';
+import { GalleryEmptyState, fetchJson } from './galleryAdminShared';
 import {
   GalleryAlbumMovePicker,
   GalleryAlbumSwitchSheet,
   GalleryAlbumsSidebar,
   GalleryCmsHeader,
+  GalleryCmsModal,
   GalleryCmsShell,
+  GalleryMediaFilterModal,
+  GalleryMediaGridSkeleton,
+  GalleryMediaToolbar,
   GallerySelectionActionsPopup,
+  readGallerySidebarCollapsed,
+  writeGallerySidebarCollapsed,
 } from './cms';
 
+function isVideoMime(mimeType) {
+  return typeof mimeType === 'string' && mimeType.toLowerCase().startsWith('video/');
+}
+
+function isAudioPhoto(photo) {
+  return Boolean(photo) && isPhotoAudio(photo, photo?.imageUrl);
+}
+
+function getPhotoSearchText(photo) {
+  return [photo?.caption, photo?.originalFilename, photo?.sourceId]
+    .map((value) => (typeof value === 'string' ? value.toLowerCase() : ''))
+    .join(' ');
+}
+
+function clampGalleryGridColumns(value) {
+  return Math.max(2, Math.min(8, Number(value) || 4));
+}
+
 export default function GalleryArrangePanel({ controller, embedded = false }) {
-  const sidebarCollapsedStorageKey = 'gallery:sidebarCollapsed:v1';
+  const mediaGridColumnsStorageKey = 'gallery:mediaGridColumns:v1';
   const {
     albums,
     selectedAlbum,
@@ -59,6 +79,9 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
     handleDragStateChange,
     loadPhotos,
     getPhotoSortTime,
+    uploadFiles,
+    uploadingFiles,
+    uploadSummary,
   } = controller;
 
   const isDragging = Boolean(arrangeDragState.isDragging);
@@ -70,12 +93,15 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
   const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
   const [albumSwitchOpen, setAlbumSwitchOpen] = useState(false);
   const [movePickerOpen, setMovePickerOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const [activeChip, setActiveChip] = useState('manual');
+  const [mediaGridColumns, setMediaGridColumns] = useState(4);
   const [isDesktop, setIsDesktop] = useState(false);
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
-  const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(sidebarCollapsedStorageKey) === 'true';
-  });
+  const [manualSidebarCollapsed, setManualSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
@@ -92,8 +118,26 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(sidebarCollapsedStorageKey, manualSidebarCollapsed ? 'true' : 'false');
-  }, [manualSidebarCollapsed, sidebarCollapsedStorageKey]);
+
+    const storedSidebarCollapsed = readGallerySidebarCollapsed(null);
+    if (storedSidebarCollapsed !== null) {
+      setManualSidebarCollapsed(storedSidebarCollapsed);
+    }
+
+    const storedGridColumns = Number(window.localStorage.getItem(mediaGridColumnsStorageKey));
+    if (Number.isFinite(storedGridColumns)) {
+      setMediaGridColumns(clampGalleryGridColumns(storedGridColumns));
+    }
+  }, [mediaGridColumnsStorageKey]);
+
+  useEffect(() => {
+    writeGallerySidebarCollapsed(manualSidebarCollapsed);
+  }, [manualSidebarCollapsed]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(mediaGridColumnsStorageKey, String(mediaGridColumns));
+  }, [mediaGridColumns, mediaGridColumnsStorageKey]);
 
   const loadGallerySettings = useCallback(async () => {
     try {
@@ -122,6 +166,95 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
     };
   }, [loadGallerySettings]);
 
+  const chips = useMemo(() => {
+    const list = Array.isArray(arrangePhotos) ? arrangePhotos : [];
+    let images = 0;
+    let videos = 0;
+    let audio = 0;
+    let nsfw = 0;
+    for (const photo of list) {
+      const video = isVideoMime(photo?.mimeType);
+      const isAud = isAudioPhoto(photo);
+      if (video) {
+        videos += 1;
+      } else if (isAud) {
+        audio += 1;
+      } else {
+        images += 1;
+      }
+      if (!video && shouldBlurPhoto(photo, { blurEnabled: true })) {
+        nsfw += 1;
+      }
+    }
+
+    const next = [{ id: 'all', label: 'All' }];
+    if (images > 0) next.push({ id: 'images', label: 'Images' });
+    if (videos > 0) next.push({ id: 'videos', label: 'Videos' });
+    if (audio > 0) next.push({ id: 'audio', label: 'Audio' });
+    if (nsfw > 0) next.push({ id: 'nsfw', label: 'NSFW' });
+    next.push({ id: 'recent', label: 'Recent' });
+    next.push({ id: 'manual', label: 'Manual' });
+    if (selectedCount > 0) next.push({ id: 'selected', label: `Selected (${selectedCount})` });
+    return next;
+  }, [arrangePhotos, selectedCount]);
+
+  useEffect(() => {
+    if (loadingPhotos) return;
+    if (!chips.some((chip) => chip.id === activeChip)) {
+      setActiveChip('all');
+    }
+  }, [chips, activeChip, loadingPhotos]);
+
+  const handleChipChange = useCallback(
+    (chipId) => {
+      setActiveChip(chipId);
+
+      if (chipId === 'manual') {
+        if (typeof setSortMode === 'function' && sortMode !== 'custom') {
+          setSortMode('custom');
+        }
+        void loadPhotos(selectedAlbumId, 'custom');
+        return;
+      }
+
+      if (chipId === 'recent') {
+        if (typeof setSortMode === 'function' && sortMode !== 'dateDesc') {
+          setSortMode('dateDesc');
+        }
+        void loadPhotos(selectedAlbumId, 'dateDesc');
+      }
+    },
+    [loadPhotos, selectedAlbumId, setSortMode, sortMode],
+  );
+
+  const handleGridColumnsChange = useCallback((nextValue) => {
+    setMediaGridColumns(clampGalleryGridColumns(nextValue));
+  }, []);
+
+  const filteredPhotos = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+    let next = Array.isArray(arrangePhotos) ? arrangePhotos : [];
+
+    if (activeChip === 'images') {
+      next = next.filter((photo) => !isVideoMime(photo?.mimeType) && !isAudioPhoto(photo));
+    } else if (activeChip === 'videos') {
+      next = next.filter((photo) => isVideoMime(photo?.mimeType));
+    } else if (activeChip === 'audio') {
+      next = next.filter((photo) => isAudioPhoto(photo));
+    } else if (activeChip === 'nsfw') {
+      next = next.filter((photo) => !isVideoMime(photo?.mimeType) && shouldBlurPhoto(photo, { blurEnabled: true }));
+    } else if (activeChip === 'selected') {
+      const selected = new Set(selectedPhotoIds);
+      next = next.filter((photo) => selected.has(photo.id));
+    }
+
+    if (query) {
+      next = next.filter((photo) => getPhotoSearchText(photo).includes(query));
+    }
+
+    return next;
+  }, [activeChip, arrangePhotos, searchValue, selectedPhotoIds]);
+
   const firstSelectedPhoto = useMemo(() => {
     const firstId = selectedPhotoIds[0];
     if (!firstId) return null;
@@ -139,6 +272,32 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
     const match = Array.isArray(albums) ? albums.find((album) => album.id === moveTargetAlbumId) : null;
     return match?.name ?? null;
   }, [albums, moveTargetAlbumId]);
+
+  const handleOpenFilter = useCallback(() => setFilterOpen(true), []);
+  const handleOpenImport = useCallback(() => setImportOpen(true), []);
+  const handleOpenUpload = useCallback(() => setUploadOpen(true), []);
+
+  const handleItemsChange = useCallback(
+    (nextItems) => {
+      if (!Array.isArray(nextItems)) return;
+
+      if (nextItems.length === arrangePhotos.length) {
+        reorderChange(nextItems);
+        return;
+      }
+
+      const filteredIdSet = new Set(nextItems.map((photo) => photo.id));
+      let cursor = 0;
+      const merged = arrangePhotos.map((photo) => {
+        if (!filteredIdSet.has(photo.id)) return photo;
+        const nextPhoto = nextItems[cursor];
+        cursor += 1;
+        return nextPhoto ?? photo;
+      });
+      reorderChange(merged);
+    },
+    [arrangePhotos, reorderChange],
+  );
 
   return (
     <div className={embedded ? '' : 'space-y-4'}>
@@ -210,24 +369,19 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
         }}
       />
 
-      {!embedded ? (
-        <GalleryPageHeader
-          eyebrow="Sorting Workspace"
-          title="Arrange"
-          description="A dedicated ordering workspace for the selected album with selection, reordering, and save controls only."
-        />
-      ) : null}
-
       <GalleryCmsShell
         embedded={embedded}
         sidebarCollapsed={manualSidebarCollapsed}
         header={
           <GalleryCmsHeader
-            albumName={selectedAlbum?.name || 'Arrange'}
+            albumName={selectedAlbum?.name || 'Media'}
             albumCountLabel={albumCountLabel}
-            showSearch={false}
-            showUploadButton={false}
-            desktopActions={
+            searchValue={searchValue}
+            onSearchChange={setSearchValue}
+            onOpenFilter={handleOpenFilter}
+            onOpenImport={handleOpenImport}
+            onOpenUpload={handleOpenUpload}
+            extraDesktopActions={
               <>
                 <button
                   type="button"
@@ -261,11 +415,15 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
             onCreateAlbumClick={() => setCreateAlbumOpen(true)}
             mobileAlbumName={selectedAlbum?.name}
             mobileAlbumCountLabel={albumCountLabel}
-            onMobileOpenFilter={undefined}
-            onMobileOpenImport={undefined}
-            onMobileFocusSearch={undefined}
+            onMobileOpenFilter={handleOpenFilter}
+            onMobileOpenImport={handleOpenImport}
+            onMobileFocusSearch={() => {
+              setTimeout(() => {
+                if (typeof document === 'undefined') return;
+                document.getElementById('gallery-media-search')?.focus();
+              }, 40);
+            }}
             onMobileOpenSwitch={() => setAlbumSwitchOpen(true)}
-            showMobileChips={false}
             blurUnclothyGenerated={blurUnclothyGenerated}
             collapsed={manualSidebarCollapsed}
             onToggleCollapsed={() => setManualSidebarCollapsed((current) => !current)}
@@ -273,120 +431,109 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
         }
         mobileTabs={null}
         main={
-          <main className="min-w-0 bg-white dark:bg-slate-900">
-            <section className="px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
-              {selectedAlbum ? (
-                <GalleryPanelCard
-                  title={`Arrange ${selectedAlbum.name}`}
-                  description=""
-                  className={`relative overflow-visible ${showSelectionBar ? 'pb-44 lg:pb-28' : 'pb-40 lg:pb-0'}`}
-                >
-                  {!isDragging ? (
-                    <div className="hidden rounded-xl border border-slate-200 bg-white/95 p-3 dark:border-slate-700 dark:bg-slate-900/95 md:block">
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className={ghostButtonStyles}
-                          onClick={async () => {
-                            if (sortMode !== 'custom') {
-                              setSortMode('custom');
-                            }
-                            await loadPhotos(selectedAlbumId, 'custom');
-                          }}
-                        >
-                          Manual order
-                        </button>
-                        <button
-                          type="button"
-                          className={ghostButtonStyles}
-                          onClick={() => reorderChange([...arrangePhotos].sort((a, b) => getPhotoSortTime(b) - getPhotoSortTime(a)))}
-                        >
-                          Sort by newest
-                        </button>
-                        <button
-                          type="button"
-                          className={ghostButtonStyles}
-                          onClick={() => reorderChange([...arrangePhotos].sort((a, b) => getPhotoSortTime(a) - getPhotoSortTime(b)))}
-                        >
-                          Sort by oldest
-                        </button>
-                        <button type="button" className={ghostButtonStyles} onClick={() => reorderChange([...arrangePhotos].reverse())}>
-                          Reverse order
-                        </button>
-                        <button type="button" className={ghostButtonStyles} onClick={() => moveSelection('top')}>
-                          Move to top
-                        </button>
-                        <button type="button" className={ghostButtonStyles} onClick={() => moveSelection('bottom')}>
-                          Move to bottom
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
+          <main className={`min-w-0 bg-white dark:bg-slate-900 ${showSelectionBar ? 'pb-44 lg:pb-28' : 'pb-40 lg:pb-0'}`}>
+            <section>
+              {!isDragging ? (
+                <GalleryMediaToolbar
+                  searchValue={searchValue}
+                  onSearchChange={setSearchValue}
+                  activeChip={activeChip}
+                  chips={chips}
+                  onChipChange={handleChipChange}
+                  onOpenFilter={handleOpenFilter}
+                  gridColumns={mediaGridColumns}
+                  onGridColumnsChange={handleGridColumnsChange}
+                />
+              ) : null}
 
-                  {!showSelectionBar && !isDragging ? (
-                    <div className="md:hidden">
-                      <GalleryArrangeMobileControls
-                        orderDirty={orderDirty}
-                        orderSaving={orderSaving}
-                        onSaveOrder={saveOrder}
-                        onManualOrder={async () => {
-                          if (sortMode !== 'custom') {
-                            setSortMode('custom');
-                          }
-                          await loadPhotos(selectedAlbumId, 'custom');
-                        }}
-                        onSortNewest={() => reorderChange([...arrangePhotos].sort((a, b) => getPhotoSortTime(b) - getPhotoSortTime(a)))}
-                        onSortOldest={() => reorderChange([...arrangePhotos].sort((a, b) => getPhotoSortTime(a) - getPhotoSortTime(b)))}
-                        onReverseOrder={() => reorderChange([...arrangePhotos].reverse())}
-                        onMoveTop={() => moveSelection('top')}
-                        onMoveBottom={() => moveSelection('bottom')}
-                        onUndo={undoOrder}
-                      />
-                    </div>
-                  ) : null}
+              {!showSelectionBar && !isDragging ? (
+                <div className="md:hidden">
+                  <GalleryArrangeMobileControls
+                    orderDirty={orderDirty}
+                    orderSaving={orderSaving}
+                    onSaveOrder={saveOrder}
+                    onManualOrder={async () => {
+                      handleChipChange('manual');
+                    }}
+                    onSortNewest={() =>
+                      reorderChange([...arrangePhotos].sort((a, b) => getPhotoSortTime(b) - getPhotoSortTime(a)))
+                    }
+                    onSortOldest={() =>
+                      reorderChange([...arrangePhotos].sort((a, b) => getPhotoSortTime(a) - getPhotoSortTime(b)))
+                    }
+                    onReverseOrder={() => reorderChange([...arrangePhotos].reverse())}
+                    onMoveTop={() => moveSelection('top')}
+                    onMoveBottom={() => moveSelection('bottom')}
+                    onUndo={undoOrder}
+                  />
+                </div>
+              ) : null}
 
-                  {loadingPhotos ? (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Loading media...</p>
-                  ) : arrangePhotos.length === 0 ? (
-                    <GalleryEmptyState
-                      title="No media to arrange"
-                      description="Use the Media page first, then return here to manually sequence the album."
-                    />
-                  ) : (
-                    <SortableMediaGrid
-                      items={arrangePhotos}
-                      selectedIds={selectedPhotoIds}
-                      coverPhotoId={selectedAlbum.coverPhotoId}
-                      blurUnclothyGenerated={blurUnclothyGenerated}
-                      onItemsChange={reorderChange}
-                      onToggleSelect={togglePhotoSelect}
-                      onSelectRange={(photoId, options) => selectPhotoRange(photoId, arrangePhotos.map((photo) => photo.id), options)}
-                      onSetCover={setCoverPhoto}
-                      onPreview={setPreviewPhoto}
-                      onDragStateChange={handleDragStateChange}
-                    />
-                  )}
-
-                  {showSelectionBar ? (
-                    <GallerySelectionActionsPopup
-                      open={showSelectionBar}
-                      selectedCount={selectedCount}
-                      disabled={movingPhotos || confirmingDelete}
-                      targetAlbumName={moveTargetAlbumName}
-                      onPickAlbum={() => setMovePickerOpen(true)}
-                      onMove={() => {
-                        if (!moveTargetAlbumId || moveTargetAlbumId === selectedAlbumId) return;
-                        void moveSelectedPhotos();
-                      }}
-                      onCreateAlbum={() => setCreateAlbumOpen(true)}
-                      onDelete={() => setConfirmDeleteOpen(true)}
-                      onClear={clearPhotoSelection}
-                    />
-                  ) : null}
-                </GalleryPanelCard>
+              {loadingPhotos ? (
+                <GalleryMediaGridSkeleton gridColumns={mediaGridColumns} />
+              ) : !selectedAlbum ? (
+                <div className="px-4 pb-6 sm:px-5 lg:px-6">
+                  <GalleryEmptyState
+                    title="No album selected"
+                    description="Pick an album from the left rail to open its intake workspace."
+                  />
+                </div>
+              ) : filteredPhotos.length === 0 ? (
+                <div className="px-4 pb-6 sm:px-5 lg:px-6">
+                  <GalleryEmptyState
+                    title={arrangePhotos.length === 0 ? 'No media to arrange' : 'No matches'}
+                    description={
+                      arrangePhotos.length === 0
+                        ? 'Upload files or import Google Drive items to populate this album.'
+                        : 'Try clearing search or switching filters.'
+                    }
+                  />
+                </div>
               ) : (
-                <GalleryEmptyState title="No album selected" description="Choose an album from the left rail to open the arrange workspace." />
+                <div>
+                  <SortableMediaGrid
+                    items={filteredPhotos}
+                    selectedIds={selectedPhotoIds}
+                    blurUnclothyGenerated={blurUnclothyGenerated}
+                    gridColumns={mediaGridColumns}
+                    onItemsChange={handleItemsChange}
+                    onToggleSelect={togglePhotoSelect}
+                    onSelectRange={(photoId, options) =>
+                      selectPhotoRange(
+                        photoId,
+                        filteredPhotos.map((photo) => photo.id),
+                        options,
+                      )
+                    }
+                    onPreview={setPreviewPhoto}
+                    onDragStateChange={handleDragStateChange}
+                  />
+                </div>
               )}
+
+              {showSelectionBar ? (
+                <GallerySelectionActionsPopup
+                  open={showSelectionBar}
+                  selectedCount={selectedCount}
+                  disabled={movingPhotos || confirmingDelete}
+                  targetAlbumName={moveTargetAlbumName}
+                  canSetCover={
+                    selectedCount === 1 && Boolean(firstSelectedPhoto) && !isAudioPhoto(firstSelectedPhoto)
+                  }
+                  onSetCover={() => {
+                    if (selectedCount !== 1 || !firstSelectedPhoto) return;
+                    void setCoverPhoto(firstSelectedPhoto.id);
+                  }}
+                  onPickAlbum={() => setMovePickerOpen(true)}
+                  onMove={() => {
+                    if (!moveTargetAlbumId || moveTargetAlbumId === selectedAlbumId) return;
+                    void moveSelectedPhotos();
+                  }}
+                  onCreateAlbum={() => setCreateAlbumOpen(true)}
+                  onDelete={() => setConfirmDeleteOpen(true)}
+                  onClear={clearPhotoSelection}
+                />
+              ) : null}
             </section>
 
             <GalleryMediaViewer
@@ -404,6 +551,71 @@ export default function GalleryArrangePanel({ controller, embedded = false }) {
         inspector={null}
         mobileFooterActions={null}
       />
+
+      <GalleryCmsModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        title="Upload media"
+        description={selectedAlbum ? `Uploads go directly into ${selectedAlbum.name}.` : 'Select an album to upload media.'}
+      >
+        <GalleryUploadDropzone
+          uploading={uploadingFiles}
+          uploadSummary={uploadSummary}
+          onUploadFiles={uploadFiles}
+          title="Upload media"
+          description="Drag files or choose files from your device."
+          helpText="Batch uploads go straight into the selected album."
+          uploadLabel="Choose files"
+        />
+      </GalleryCmsModal>
+
+      <GalleryMediaFilterModal
+        open={filterOpen}
+        sortMode={sortMode}
+        mediaFilter={['all', 'images', 'videos', 'audio', 'nsfw', 'selected'].includes(activeChip) ? activeChip : 'all'}
+        onClose={() => setFilterOpen(false)}
+        onApplySort={(nextSort) => {
+          if (typeof setSortMode === 'function') {
+            setSortMode(nextSort);
+          }
+
+          setActiveChip((current) => {
+            if (current !== 'recent' && current !== 'manual') {
+              return current;
+            }
+            if (nextSort === 'custom') return 'manual';
+            if (nextSort === 'dateDesc') return 'recent';
+            return 'all';
+          });
+
+          void loadPhotos(selectedAlbumId, nextSort);
+        }}
+        onApplyFilter={(nextFilter) => {
+          if (!nextFilter) return;
+          setActiveChip(nextFilter);
+        }}
+        filterOptions={[
+          { id: 'all', title: 'All media', description: 'Show every media item in this album.' },
+          { id: 'images', title: 'Images', description: 'Show photos and still image files only.' },
+          { id: 'videos', title: 'Videos', description: 'Show video media only.' },
+          { id: 'audio', title: 'Audio', description: 'Show audio files (MP3, WAV, and similar) only.' },
+          { id: 'nsfw', title: 'NSFW images', description: 'Show images flagged by the scanner or manual blur mode.' },
+          { id: 'selected', title: 'Selected', description: 'Show only the media items currently selected.' },
+        ]}
+      />
+
+      <GalleryCmsModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        title="Import from Google Drive"
+        description={
+          selectedAlbum
+            ? `Import directly into ${selectedAlbum.name} from one selected Drive folder.`
+            : 'Select an album to import media.'
+        }
+      >
+        <GalleryDriveImportSection controller={controller} selectedAlbum={selectedAlbum} />
+      </GalleryCmsModal>
 
       <GalleryAlbumSwitchSheet
         open={albumSwitchOpen && !isDesktop}

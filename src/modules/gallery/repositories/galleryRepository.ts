@@ -2,6 +2,10 @@ import { PhotoSourceType, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import type { GallerySort } from '@/src/modules/gallery/contracts';
 
+function isAlbumCoverCandidate(mimeType?: string | null) {
+  return typeof mimeType === 'string' && mimeType.toLowerCase().startsWith('image/');
+}
+
 export const photoSelect = {
   id: true,
   albumId: true,
@@ -308,32 +312,45 @@ export class GalleryRepository {
     sourceType?: PhotoSourceType;
     sourceId?: string;
   }) {
-    const first = await prisma.albumPhoto.findFirst({
-      where: { albumId: data.albumId },
-      orderBy: [{ sortOrder: 'asc' }, { uploadedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-      select: { sortOrder: true },
-    });
+    return prisma.$transaction(async (tx) => {
+      const first = await tx.albumPhoto.findFirst({
+        where: { albumId: data.albumId },
+        orderBy: [{ sortOrder: 'asc' }, { uploadedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+        select: { sortOrder: true },
+      });
 
-    return prisma.albumPhoto.create({
-      data: {
-        albumId: data.albumId,
-        imageUrl: data.imageUrl,
-        cloudinaryPublicId: data.cloudinaryPublicId ?? null,
-        contentHash: data.contentHash ?? null,
-        originalFilename: data.originalFilename ?? null,
-        mimeType: data.mimeType ?? null,
-        fileSizeBytes: data.fileSizeBytes ?? null,
-        nsfwDetected: data.nsfwDetected ?? null,
-        nsfwDetectedAt: data.nsfwDetectedAt,
-        nsfwScores: data.nsfwScores ?? undefined,
-        blurOverride: (data.blurOverride ?? 'auto') || 'auto',
-        caption: data.caption ?? null,
-        dateTaken: data.dateTaken,
-        sourceType: data.sourceType ?? PhotoSourceType.upload,
-        sourceId: data.sourceId ?? null,
-        sortOrder: (first?.sortOrder ?? 0) - 1,
-      },
-      select: photoSelect,
+      const photo = await tx.albumPhoto.create({
+        data: {
+          albumId: data.albumId,
+          imageUrl: data.imageUrl,
+          cloudinaryPublicId: data.cloudinaryPublicId ?? null,
+          contentHash: data.contentHash ?? null,
+          originalFilename: data.originalFilename ?? null,
+          mimeType: data.mimeType ?? null,
+          fileSizeBytes: data.fileSizeBytes ?? null,
+          nsfwDetected: data.nsfwDetected ?? null,
+          nsfwDetectedAt: data.nsfwDetectedAt,
+          nsfwScores: data.nsfwScores ?? undefined,
+          blurOverride: (data.blurOverride ?? 'auto') || 'auto',
+          caption: data.caption ?? null,
+          dateTaken: data.dateTaken,
+          sourceType: data.sourceType ?? PhotoSourceType.upload,
+          sourceId: data.sourceId ?? null,
+          sortOrder: (first?.sortOrder ?? 0) - 1,
+        },
+        select: photoSelect,
+      });
+
+      // First image into an album with no cover becomes the cover automatically
+      // (upload + Google Drive import both go through this path).
+      if (isAlbumCoverCandidate(data.mimeType)) {
+        await tx.album.updateMany({
+          where: { id: data.albumId, coverPhotoId: null },
+          data: { coverPhotoId: photo.id },
+        });
+      }
+
+      return photo;
     });
   }
 

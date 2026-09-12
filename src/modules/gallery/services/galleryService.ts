@@ -605,6 +605,13 @@ export class GalleryService {
             select: albumPhotoSelect,
           });
 
+          if (typeof photo.mimeType === 'string' && photo.mimeType.toLowerCase().startsWith('image/')) {
+            await tx.album.updateMany({
+              where: { id: targetAlbumId, coverPhotoId: null },
+              data: { coverPhotoId: created.id },
+            });
+          }
+
           await tx.albumPhoto.delete({
             where: { id: photo.id },
           });

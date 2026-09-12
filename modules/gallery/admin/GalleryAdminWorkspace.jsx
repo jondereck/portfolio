@@ -14,19 +14,16 @@ const workspaceTabCards = [
   {
     id: 'albums',
     label: 'Albums',
-    description: 'Create and publish the album library before moving into media work.',
     accent: 'emerald',
   },
   {
     id: 'media',
     label: 'Media',
-    description: 'Upload files and import Google Drive media into the selected album.',
     accent: 'sky',
   },
   {
     id: 'arrange',
     label: 'Arrange',
-    description: 'Reorder items, batch move selections, and save manual sequencing.',
     accent: 'amber',
   },
 ];
@@ -53,14 +50,10 @@ function WorkspaceTabCard({ tab, active, onClick }) {
   return (
     <button
       type="button"
-      className={`flex h-full flex-col rounded-2xl border p-4 text-left transition duration-200 ${accentStyles[tab.accent]}`}
+      className={`flex min-h-11 items-center justify-center rounded-xl border px-3 py-2.5 text-center transition duration-200 ${accentStyles[tab.accent]}`}
       onClick={onClick}
     >
-      <span className="text-xs font-semibold uppercase tracking-[0.18em] opacity-80">{tab.label}</span>
-      <span className="mt-2 text-sm leading-6 opacity-90">{tab.description}</span>
-      <span className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] opacity-70">
-        {active ? 'Active section' : 'Open section'}
-      </span>
+      <span className="text-xs font-semibold uppercase tracking-[0.18em]">{tab.label}</span>
     </button>
   );
 }
@@ -124,8 +117,8 @@ export default function GalleryAdminWorkspace({ initialTab = 'albums' }) {
       />
 
       <div className="hidden md:block">
-        <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="grid grid-cols-3 gap-1.5">
             {workspaceTabCards.map((tab) => (
               <WorkspaceTabCard
                 key={tab.id}

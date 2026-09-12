@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { useUnclothyTasksStore } from '@/store/unclothyTasks';
+import { stopRunner, useUnclothyTasksStore } from '@/store/unclothyTasks';
 
 export default function UnclothyTaskNotifier() {
   const hydrate = useUnclothyTasksStore((state) => state.hydrateFromLocalStorage);
@@ -16,7 +16,11 @@ export default function UnclothyTaskNotifier() {
 
   useEffect(() => {
     hydrate();
+    // One bootstrap check; store keeps polling only while queued/running tasks exist.
     startRunner();
+    return () => {
+      stopRunner();
+    };
   }, [hydrate, startRunner]);
 
   useEffect(() => {
@@ -50,4 +54,3 @@ export default function UnclothyTaskNotifier() {
 
   return null;
 }
-

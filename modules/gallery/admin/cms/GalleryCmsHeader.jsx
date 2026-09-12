@@ -16,6 +16,7 @@ export default function GalleryCmsHeader({
   showSearch = true,
   showUploadButton = true,
   desktopActions,
+  extraDesktopActions,
   mobileActions,
 }) {
   const renderDefaultDesktopActions = () => (
@@ -91,6 +92,8 @@ export default function GalleryCmsHeader({
           Upload
         </button>
       ) : null}
+
+      {extraDesktopActions}
     </>
   );
 

@@ -1,5 +1,18 @@
 # Agent guidance
 
+## Graphify (prefer this first)
+
+This repo uses **Graphify**. A built graph lives under `graphify-out/` (especially `graphify-out/graph.json` and `graphify-out/GRAPH_REPORT.md`).
+
+**Before broad codebase exploration** (how X works, what calls Y, where Z lives, architecture / relationships):
+
+1. Prefer `graphify query "<question>"` (or `graphify explain` / `graphify path`) over scanning many files with grep/glob/subagents.
+2. You may also read focused sections of `graphify-out/GRAPH_REPORT.md` when that answers the question.
+3. Only fall back to wide file search when Graphify has no useful hit, the graph looks stale, or the task needs exact current source text.
+4. If the user asks to refresh the map, run `/graphify` / `graphify --update` as appropriate — don’t rebuild unless needed.
+
+Goal: **save tokens** by asking the graph first instead of re-discovering the codebase every time.
+
 ## Do not casually change UI/UX
 
 Existing admin Control Center visuals are intentional product design. **Do not redesign, restyle, or “simplify” established patterns unless the user explicitly asks.**
