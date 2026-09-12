@@ -60,7 +60,43 @@ const AlbumCover = ({ photo, alt, className, fallbackClassName, blurUnclothyGene
 
 const resolveAlbumCoverPhoto = (album) => album?.coverPhoto || album?.photos?.[0] || null;
 
+function getAlbumMediaCounts(album) {
+  if (typeof album?.mediaCount?.photos === 'number' && typeof album?.mediaCount?.videos === 'number') {
+    return {
+      photos: album.mediaCount.photos ?? 0,
+      videos: album.mediaCount.videos ?? 0,
+      audio: album.mediaCount.audio ?? 0,
+    };
+  }
+
+  const mediaItems = Array.isArray(album?.photos) ? album.photos : [];
+  if (!mediaItems.length) {
+    return {
+      photos: album?._count?.photos ?? 0,
+      videos: 0,
+      audio: 0,
+    };
+  }
+
+  const audio = mediaItems.reduce((total, item) => (isPhotoAudio(item) ? total + 1 : total), 0);
+  const videos = mediaItems.reduce((total, item) => (!isPhotoAudio(item) && isPhotoVideo(item) ? total + 1 : total), 0);
+  return {
+    photos: Math.max(mediaItems.length - videos - audio, 0),
+    videos,
+    audio,
+  };
+}
+
+function formatAlbumMediaCount(counts) {
+  const parts = [`${counts.photos} photos`];
+  if (counts.videos > 0) parts.push(`${counts.videos} videos`);
+  if (counts.audio > 0) parts.push(`${counts.audio} audio`);
+  return parts.join(' • ');
+}
+
 function DeckCard({ album, blurUnclothyGenerated, onSelect, cardRef, className = '' }) {
+  const albumCounts = getAlbumMediaCounts(album);
+
   return (
     <button
       ref={cardRef}
@@ -83,9 +119,9 @@ function DeckCard({ album, blurUnclothyGenerated, onSelect, cardRef, className =
       />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(2,6,23,0.9),rgba(2,6,23,0.08)_62%)]" />
       <div data-deck-glass="" className="pointer-events-none absolute inset-0 bg-slate-950/40 backdrop-blur-[1.5px]" aria-hidden />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 space-y-1.5 p-3.5 sm:p-4">
-        <p className="line-clamp-2 text-[1rem] font-semibold uppercase leading-[1.02] tracking-[0.04em] text-white sm:text-[1.08rem]">
-          {album.name}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-white/88 [text-shadow:0_1px_2px_rgba(0,0,0,0.85),0_2px_10px_rgba(0,0,0,0.45)]">
+          {formatAlbumMediaCount(albumCounts)}
         </p>
       </div>
     </button>
