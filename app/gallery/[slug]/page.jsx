@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { downloadFromApi } from "@/lib/download-client";
+import { downloadAlbumZipWithProgress } from "@/lib/gallery-album-zip-client";
+import GalleryBatchProgressModal from "@/modules/gallery/admin/GalleryBatchProgressModal";
 import {
   getPlayableMediaUrl,
   getVideoPosterUrl,
@@ -997,6 +998,8 @@ export default function AlbumDetailPage({ params }) {
   const [galleryPageSize, setGalleryPageSize] = useState(24);
   const [blurUnclothyGenerated, setBlurUnclothyGenerated] = useState(true);
   const [isAlbumDownloadPending, setIsAlbumDownloadPending] = useState(false);
+  const [albumDownloadProgress, setAlbumDownloadProgress] = useState(null);
+  const albumDownloadAbortRef = useRef(null);
   const [audioPlayerOpen, setAudioPlayerOpen] = useState(false);
   const [currentAudioTrackIndex, setCurrentAudioTrackIndex] = useState(0);
   const [audioIsPlaying, setAudioIsPlaying] = useState(false);
@@ -1272,49 +1275,76 @@ export default function AlbumDetailPage({ params }) {
     setCurrentAudioTrackIndex((i) => (i + 1) % audioTracks.length);
   }, [audioTracks.length]);
 
+  const cancelAlbumDownload = useCallback(() => {
+    albumDownloadAbortRef.current?.abort();
+    albumDownloadAbortRef.current = null;
+    setIsAlbumDownloadPending(false);
+    setAlbumDownloadProgress(null);
+    toast.message("Album download cancelled.");
+  }, []);
+
   const handleDownloadAlbumZip = useCallback(async () => {
     if (accessMode === "public") {
       toast.error("Downloads are disabled for public viewers.");
       return;
     }
-    if (!album?.id) {
+    if (!album?.id || isAlbumDownloadPending) {
       return;
     }
 
+    albumDownloadAbortRef.current?.abort();
+    const controller = new AbortController();
+    albumDownloadAbortRef.current = controller;
     setIsAlbumDownloadPending(true);
-    const toastId = toast.loading(`Preparing ${album.name || "album"}...`);
-    try {
-      const downloadUrl = new URL(
-        `/api/gallery/albums/${album.id}/download`,
-        window.location.origin,
-      );
-      if (shareToken) {
-        downloadUrl.searchParams.set("share", shareToken);
-      }
+    setAlbumDownloadProgress({
+      percent: 0,
+      currentFileName: "Preparing album…",
+      currentFileIndex: 0,
+      totalFiles: 0,
+      uploadedCount: 0,
+      skippedCount: 0,
+      failedCount: 0,
+      lastResult: null,
+    });
 
-      const result = await downloadFromApi(
-        `${downloadUrl.pathname}${downloadUrl.search}`,
-        `${album.slug || "album"}.zip`,
-      );
-      if (result.skippedCount > 0) {
+    try {
+      const result = await downloadAlbumZipWithProgress({
+        albumId: album.id,
+        shareToken,
+        fallbackFilename: `${album.slug || "album"}.zip`,
+        signal: controller.signal,
+        onProgressChange: setAlbumDownloadProgress,
+      });
+
+      if (result.failedCount > 0 || result.skippedCount > 0) {
         toast.success(
-          `Downloaded ${result.filename} (${result.includedCount} items, ${result.skippedCount} skipped).`,
-          { id: toastId },
+          `Downloaded ${result.filename} (${result.includedCount} packed${
+            result.skippedCount ? `, ${result.skippedCount} skipped` : ""
+          }${result.failedCount ? `, ${result.failedCount} failed` : ""}).`,
         );
       } else {
-        toast.success(`Downloaded ${result.filename}.`, { id: toastId });
+        toast.success(`Downloaded ${result.filename}.`);
       }
     } catch (downloadError) {
+      if (
+        controller.signal.aborted ||
+        (downloadError instanceof DOMException && downloadError.name === "AbortError")
+      ) {
+        return;
+      }
       toast.error(
         downloadError instanceof Error
           ? downloadError.message
           : "Album download failed.",
-        { id: toastId },
       );
     } finally {
+      if (albumDownloadAbortRef.current === controller) {
+        albumDownloadAbortRef.current = null;
+      }
       setIsAlbumDownloadPending(false);
+      setAlbumDownloadProgress(null);
     }
-  }, [accessMode, album, shareToken]);
+  }, [accessMode, album, isAlbumDownloadPending, shareToken]);
 
   const invalidatePendingNavigation = useCallback(() => {
     navigationEpochRef.current += 1;
@@ -5303,6 +5333,19 @@ export default function AlbumDetailPage({ params }) {
         />
       ) : null}
 
+      <GalleryBatchProgressModal
+        open={Boolean(isAlbumDownloadPending && albumDownloadProgress)}
+        progress={albumDownloadProgress}
+        heading="Album download in progress"
+        currentItemFallback="Preparing album…"
+        currentItemTitle="Downloading media"
+        itemUnit="media"
+        uploadedLabel="Packed"
+        skippedLabel="Skipped"
+        failedLabel="Failed"
+        warningText="Do not go back or refresh while this is running. Use Cancel if you need to stop."
+        onCancel={cancelAlbumDownload}
+      />
     </main>
   );
 }

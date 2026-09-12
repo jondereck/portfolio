@@ -36,6 +36,7 @@
     "dotenv": "^17.4.1",
     "framer-motion": "^10.12.16",
     "ipaddr.js": "^2.2.0",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.8.0",
     "next": "^16.2.4",
     "next-auth": "^5.0.0-beta.30",

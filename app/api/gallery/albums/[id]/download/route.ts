@@ -37,6 +37,22 @@ export async function GET(request: Request, context: RouteContext) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
       }
 
+      if (url.searchParams.get('manifest') === '1') {
+        return NextResponse.json({
+          albumId,
+          slug: sharedPayload.album.slug,
+          filename: buildAlbumZipFilename(sharedPayload.album.slug),
+          skippedCount: sharedPayload.skippedPhotos.length,
+          photos: sharedPayload.downloadablePhotos.map((photo) => ({
+            id: photo.id,
+            filename:
+              photo.originalFilename ||
+              photo.caption ||
+              `media-${photo.id}`,
+          })),
+        });
+      }
+
       const zip = await createAlbumZipStream(sharedPayload.downloadablePhotos);
       const filename = buildAlbumZipFilename(sharedPayload.album.slug);
       const headers = new Headers({
@@ -67,6 +83,19 @@ export async function GET(request: Request, context: RouteContext) {
     const payload = await galleryService.getAlbumDownloadPayload(albumId, managedProfileId, true);
     if (!payload) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    if (url.searchParams.get('manifest') === '1') {
+      return NextResponse.json({
+        albumId,
+        slug: payload.album.slug,
+        filename: buildAlbumZipFilename(payload.album.slug),
+        skippedCount: payload.skippedPhotos.length,
+        photos: payload.downloadablePhotos.map((photo) => ({
+          id: photo.id,
+          filename: photo.originalFilename || photo.caption || `media-${photo.id}`,
+        })),
+      });
     }
 
     const zip = await createAlbumZipStream(payload.downloadablePhotos);

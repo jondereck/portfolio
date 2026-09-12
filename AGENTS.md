@@ -19,6 +19,7 @@ Goal: **save tokens** by asking the graph first instead of re-discovering the co
 
 ### 2026-09-12
 
+- **Album ZIP download progress** — Download ZIP reuses `GalleryBatchProgressModal` (beforeunload + back-block + Cancel). Live Preparing → per-media counter → Creating ZIP; AbortController stops packing. Client packs via manifest + per-item fetch + JSZip. `lib/gallery-album-zip-client.js`, `app/gallery/[slug]/page.jsx`, download routes.
 - **Public gallery cache + pagination** — `/gallery/[slug]` reuses CMS `GalleryMediaGridSkeleton`, IndexedDB photo cache + Cache Storage warm (`galleryPhotosCache`), and Media-library pagination (24/48/72). `app/gallery/[slug]/page.jsx`, `galleryPhotosCache.js`.
 - **Gallery Viewing Mode 1:1** — Panel matched to reference: 3 equal action columns, green Continue + outlined New Slideshow / Download ZIP, blue density slider, circular header icons. `app/gallery/[slug]/page.jsx`.
 - **Subtle video badge** — Media card “Video” label moved off-center to a small bottom-right chip (NSFW also tightened top-right). `GalleryMediaCard.jsx`.
