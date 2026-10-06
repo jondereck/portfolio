@@ -11,7 +11,7 @@ import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { useLoadingStore } from '@/store/loading';
 import { isSafeHttpUrl } from '@/lib/url-safety';
 import { compareCertificatesByIssuedAtDesc, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
-import { Dialog, DialogContent } from '@/src/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/src/components/ui/dialog';
 
 const cx = (...classes) => classes.filter(Boolean).join(' ');
 const BENTO_ADMIN_CLICK_WINDOW_MS = 550;
@@ -896,6 +896,8 @@ function Certificates({ profileSlug }) {
 
       <Dialog open={Boolean(selectedCert)} onOpenChange={(isOpen) => setSelectedCert(isOpen ? selectedCert : null)}>
         <DialogContent className="w-[min(980px,calc(100%-24px))] max-w-none rounded-[2rem] border-[3px] border-slate-950 bg-white p-3 shadow-[10px_10px_0_#0f172a]">
+          <DialogTitle className="sr-only">{selectedCert?.title || 'Certificate preview'}</DialogTitle>
+          <DialogDescription className="sr-only">Full-size certificate preview.</DialogDescription>
           {selectedCert?.isPdf && typeof selectedCert.pdfUrl === 'string' ? (
             <iframe
               title={selectedCert.title || 'Certificate preview'}

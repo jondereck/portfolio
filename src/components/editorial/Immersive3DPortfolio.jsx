@@ -11,7 +11,7 @@ import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { isSafeHttpUrl } from '@/lib/url-safety';
 import { useLoadingStore } from '@/store/loading';
-import { Dialog, DialogContent } from '@/src/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/src/components/ui/dialog';
 
 const cx = (...classes) => classes.filter(Boolean).join(' ');
 const ADMIN_CLICK_WINDOW_MS = 1600;
@@ -582,6 +582,8 @@ function CertificatesSection({ profileSlug }) {
 
       <Dialog open={Boolean(selectedCert)} onOpenChange={(isOpen) => setSelectedCert(isOpen ? selectedCert : null)}>
         <DialogContent className="w-[min(980px,calc(100%-24px))] max-w-none rounded-[28px] border border-white/15 bg-[#0d1430] p-3 text-white shadow-[0_28px_80px_rgba(0,0,0,.5)]">
+          <DialogTitle className="sr-only">{selectedCert?.title || 'Certificate preview'}</DialogTitle>
+          <DialogDescription className="sr-only">Full-size certificate preview.</DialogDescription>
           {selectedCert?.isPdf && typeof selectedCert.pdfUrl === 'string' ? (
             <iframe title={selectedCert.title || 'Certificate preview'} src={selectedCert.pdfUrl} className="h-[80vh] w-full rounded-[22px] border border-white/15 bg-white" />
           ) : (

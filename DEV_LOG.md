@@ -6,6 +6,27 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ---
 
+## 2026-10-06
+
+- **Minimalist Editorial skills grid** — Skills cards use `lg:grid-cols-3` and show `skill.image` icons (initials fallback). `MinimalistEditorialPortfolio.jsx`.
+- **Certificate category tags** — Soft pill badge (border + `neutral-100` bg) so category labels are readable on white cards. `MinimalistEditorialPortfolio.jsx`.
+- **Certificate dialog a11y** — Added screen-reader `DialogTitle` + `DialogDescription` to certificate preview dialogs (clears Radix warnings). Editorial themes + `Certificates.jsx`.
+- **Skills/Certificates reputation copy** — Short supporting lines under section headings. `MinimalistEditorialPortfolio.jsx`.
+- **Resume download CTA** — Download Resume on Hero, Skills, and Certificates (uses hero secondary CTA or `/resume.pdf`). `MinimalistEditorialPortfolio.jsx`.
+- **Section headline de-dupe** — Skills/Experience/Certificates big titles no longer repeat the eyebrow (e.g. Skills → “Craft & stack.”). `MinimalistEditorialPortfolio.jsx`.
+- **Skills resume CTA removed** — Download Resume kept on Hero + Certificates only. `MinimalistEditorialPortfolio.jsx`.
+- **About “More about me”** — Links to `#certificates` instead of `#contact`. `MinimalistEditorialPortfolio.jsx`.
+- **Portfolio header + tech tags** — Selected Work gets “Portfolio.” + supporting line; project cards show stack pills (up to 5). `MinimalistEditorialPortfolio.jsx`.
+- **Portfolio pagination** — Selected Work paginates 6 per page (Previous / page / Next), matching Certificates chrome. `MinimalistEditorialPortfolio.jsx`.
+- **Mobile scroll density** — Mobile shows 3 projects/certs per page; tighter section padding, shorter media, clamped copy; hero no longer forces full viewport height on small screens. `MinimalistEditorialPortfolio.jsx`.
+- **Certificates resume CTA removed** — Download Resume kept on Hero only. `MinimalistEditorialPortfolio.jsx`.
+- **Certificate filters mobile** — Category chips are a single horizontal swipe row on small screens (wrap from `sm` up). `MinimalistEditorialPortfolio.jsx`.
+- **Floating social dock** — Hide-on-scroll social rail restored for Minimalist Editorial (desktop left / mobile bottom), styled to match neutral editorial UI; uses contact socials + email + resume. `MinimalistEditorialPortfolio.jsx`.
+- **About highlights swipe** — Who I Am / What I Do / Tech Focus cards are a snap carousel on mobile; 3-column grid from `md` up. `MinimalistEditorialPortfolio.jsx`.
+- **About highlight stack deck** — Mobile About cards stack with peek + swipe left/right (dots); desktop stays 3-up grid. `MinimalistEditorialPortfolio.jsx`.
+- **About deck vertical swipe** — Stack swipes up/down; subtle idle nudge + bounce “Swipe” guide; vertical dots. `MinimalistEditorialPortfolio.jsx`.
+- **Project image lightbox** — Project card images open a certificate-style preview dialog. `MinimalistEditorialPortfolio.jsx`.
+
 ## 2026-09-12
 
 - **Secure session badge** — Smaller gallery header badge; verifies `/api/session/status` on load/focus/interval and on tap (redirects to login if expired). Green “Secure” when authenticated. `app/gallery/page.jsx`.

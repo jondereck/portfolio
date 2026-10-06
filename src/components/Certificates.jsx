@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import SectionContainer from './SectionContainer';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Dialog, DialogContent } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import useSWR from 'swr';
 import { FileText } from 'lucide-react';
 import { compareCertificatesByIssuedAtDesc, isPdfAssetUrl } from '@/lib/certificates';
@@ -155,6 +155,8 @@ const Certificates = ({ profileSlug = null }) => {
 
       <Dialog open={Boolean(selectedImage)} onOpenChange={(isOpen) => setSelectedImage(isOpen ? selectedImage : '')}>
         <DialogContent className="max-w-4xl bg-white p-3 dark:bg-slate-900">
+          <DialogTitle className="sr-only">Certificate preview</DialogTitle>
+          <DialogDescription className="sr-only">Full-size certificate preview.</DialogDescription>
           <img src={selectedImage} alt="Certificate preview" className="max-h-[80vh] w-full object-contain" />
         </DialogContent>
       </Dialog>
