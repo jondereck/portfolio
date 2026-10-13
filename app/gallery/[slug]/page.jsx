@@ -210,6 +210,18 @@ const buildGalleryMediaUrl = (albumId, photoId, shareToken = "") => {
   }`;
 };
 
+const buildViewerSessionUrl = (albumId, shareToken = "") => {
+  if (!albumId) return "";
+  const params = new URLSearchParams();
+  if (shareToken) {
+    params.set("share", shareToken);
+  }
+  const query = params.toString();
+  return `/api/gallery/albums/${albumId}/viewer-session${
+    query ? `?${query}` : ""
+  }`;
+};
+
 const isPermanentGalleryMediaStatus = (status) =>
   status === 404 || status === 410 || status === 403;
 
@@ -961,6 +973,8 @@ export default function AlbumDetailPage({ params }) {
     payload: null,
   });
   const persistTimerRef = useRef(null);
+  const shareTokenRef = useRef("");
+  const lastSyncedViewerPayloadRef = useRef("");
   const activeSplitPanelRef = useRef("left");
   const moveSplitPanelRef = useRef(null);
   const navigationEpochRef = useRef(0);
@@ -1034,6 +1048,7 @@ export default function AlbumDetailPage({ params }) {
   const preloadedMediaUrlsRef = useRef({});
   const preloadableGdrivePhotosRef = useRef([]);
   const shareToken = searchParams?.get("share") || "";
+  shareTokenRef.current = shareToken;
   const showWatermark = accessMode === "public";
   const watermarkText = useMemo(() => {
     const host = typeof window !== "undefined" ? window.location.host : "";
@@ -1399,14 +1414,18 @@ export default function AlbumDetailPage({ params }) {
   }, [exitBrowserFullscreen]);
 
   const flushViewerSession = useCallback((options = {}) => {
-    const { keepalive = false } = options;
+    const { keepalive = false, force = false } = options;
     const { userId, albumId, payload } = viewerSessionRef.current;
     if (!albumId || !payload) return;
 
-    writeLocalViewerSession(albumId, {
-      ...payload,
-      updatedAt: new Date().toISOString(),
-    }, userId);
+    writeLocalViewerSession(
+      albumId,
+      {
+        ...payload,
+        updatedAt: new Date().toISOString(),
+      },
+      userId,
+    );
 
     if (persistTimerRef.current) {
       window.clearTimeout(persistTimerRef.current);
@@ -1415,12 +1434,22 @@ export default function AlbumDetailPage({ params }) {
 
     if (!userId) return;
 
-    fetch(`/api/gallery/albums/${albumId}/viewer-session`, {
+    const body = JSON.stringify(payload);
+    if (!force && lastSyncedViewerPayloadRef.current === body) return;
+    lastSyncedViewerPayloadRef.current = body;
+
+    fetch(buildViewerSessionUrl(albumId, shareTokenRef.current), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body,
+      credentials: "same-origin",
       keepalive: Boolean(keepalive),
-    }).catch(() => {});
+    }).catch(() => {
+      // Allow a later flush to retry after a failed network write.
+      if (lastSyncedViewerPayloadRef.current === body) {
+        lastSyncedViewerPayloadRef.current = "";
+      }
+    });
   }, []);
 
   const closeViewer = useCallback(() => {
@@ -1564,13 +1593,15 @@ export default function AlbumDetailPage({ params }) {
     resumeHandledRef.current = true;
     setResumePrompt(null);
     setSavedViewerSession(null);
+    lastSyncedViewerPayloadRef.current = "";
     if (album?.id) {
       clearLocalViewerSession(album.id, viewerUserId);
-      fetch(`/api/gallery/albums/${album.id}/viewer-session`, {
+      fetch(buildViewerSessionUrl(album.id, shareToken), {
         method: "DELETE",
+        credentials: "same-origin",
       }).catch(() => {});
     }
-  }, [album?.id, viewerUserId]);
+  }, [album?.id, shareToken, viewerUserId]);
 
   const dismissResumePrompt = useCallback(() => {
     resumeHandledRef.current = true;
@@ -1611,20 +1642,38 @@ export default function AlbumDetailPage({ params }) {
     resumeHandledRef.current = false;
     setResumePrompt(null);
     setSavedViewerSession(null);
+    lastSyncedViewerPayloadRef.current = "";
     if (!album?.id) return undefined;
 
     let active = true;
     (async () => {
       let remote = null;
       let userId = null;
+
+      // Bootstrap userId even if the session GET fails (share/auth edge cases).
       try {
-        const res = await fetch(
-          `/api/gallery/albums/${album.id}/viewer-session`,
-          { cache: "no-store" },
-        );
+        const statusRes = await fetch("/api/session/status", {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (statusRes.ok) {
+          const status = await statusRes.json();
+          if (status?.authenticated && status?.userId) {
+            userId = status.userId;
+          }
+        }
+      } catch {
+        // ignore; viewer-session GET may still succeed
+      }
+
+      try {
+        const res = await fetch(buildViewerSessionUrl(album.id, shareToken), {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
         if (res.ok) {
           const data = await res.json();
-          userId = data?.userId ?? null;
+          userId = data?.userId ?? userId;
           remote = data?.session ?? null;
         }
       } catch {
@@ -1664,8 +1713,7 @@ export default function AlbumDetailPage({ params }) {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [album?.id]);
+  }, [album?.id, shareToken]);
 
   // Persist viewer session: immediate localStorage + debounced server PUT.
   useEffect(() => {
@@ -1698,17 +1746,15 @@ export default function AlbumDetailPage({ params }) {
     }
     persistTimerRef.current = window.setTimeout(() => {
       persistTimerRef.current = null;
-      fetch(`/api/gallery/albums/${album.id}/viewer-session`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }).catch(() => {});
+      flushViewerSession();
     }, 800);
 
     return () => {
       if (persistTimerRef.current) {
         window.clearTimeout(persistTimerRef.current);
         persistTimerRef.current = null;
+        // Don't drop progress when slideshow advances faster than the debounce.
+        flushViewerSession();
       }
     };
   }, [
@@ -1720,6 +1766,7 @@ export default function AlbumDetailPage({ params }) {
     delayMs,
     isPlaying,
     splitPanels,
+    flushViewerSession,
   ]);
 
   // Flush the latest session if the tab is hidden/unloaded while viewing.

@@ -17,6 +17,10 @@ const parseId = (value: string) => {
   return Number.isInteger(id) && id > 0 ? id : null;
 };
 
+/**
+ * Authenticated users may read/write their own viewer session when they can
+ * access the album as owner/admin OR via a valid share token (cross-device resume).
+ */
 async function resolveAlbumForActor(request: Request, idParam: string) {
   const actor = await requireAuthActor(request);
   const id = parseId(idParam);
@@ -26,16 +30,33 @@ async function resolveAlbumForActor(request: Request, idParam: string) {
 
   const album = await prisma.album.findUnique({
     where: { id },
-    select: { id: true, profileId: true },
+    select: {
+      id: true,
+      profileId: true,
+      shareToken: true,
+      shareLinkEnabled: true,
+    },
   });
   if (!album) {
     return { error: NextResponse.json({ error: 'Not found' }, { status: 404 }) } as const;
   }
-  if (!canAccessProfile(actor, album.profileId)) {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) } as const;
+
+  if (canAccessProfile(actor, album.profileId)) {
+    return { actor, albumId: album.id } as const;
   }
 
-  return { actor, albumId: album.id } as const;
+  const url = new URL(request.url);
+  const shareToken = url.searchParams.get('share')?.trim() ?? '';
+  if (
+    shareToken &&
+    album.shareLinkEnabled &&
+    album.shareToken &&
+    album.shareToken === shareToken
+  ) {
+    return { actor, albumId: album.id } as const;
+  }
+
+  return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) } as const;
 }
 
 function serializeSession(row: {

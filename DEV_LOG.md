@@ -6,6 +6,10 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ---
 
+## 2026-10-13
+
+- **Gallery continue cross-device sync** — “Continue where you left off” was effectively device-local: viewer-session API only allowed album owners (`canAccessProfile`), client skipped server PUT without `viewerUserId`, and slideshow debounce cancelled pending saves. Fix: allow authenticated users with a valid share token; bootstrap `userId` from `/api/session/status`; pass `share` + `credentials`; flush pending PUT on effect cleanup / close. `viewer-session/route.ts`, `session/status/route.ts`, `app/gallery/[slug]/page.jsx`.
+
 ## 2026-10-06
 
 - **Minimalist Editorial skills grid** — Skills cards use `lg:grid-cols-3` and show `skill.image` icons (initials fallback). `MinimalistEditorialPortfolio.jsx`.
