@@ -48,7 +48,12 @@ function VideoGridThumbnail({
         className={className}
         onLoad={onLoadedData}
         onError={() => {
-          // Drive/Cloudinary poster failed — show first video frame instead.
+          // Drive public thumbnail often 403 — try authenticated admin proxy next.
+          if (posterSrc !== resolvedUrl && resolvedUrl) {
+            setPosterSrc(resolvedUrl);
+            return;
+          }
+          // Then fall back to muted first video frame.
           setMode('video');
           onError?.();
         }}
@@ -173,13 +178,26 @@ export default function MediaPreview({
     );
   }
 
+  const [imageSrc, setImageSrc] = useState(gridPreviewUrl || resolvedUrl);
+
+  useEffect(() => {
+    setImageSrc(gridPreviewUrl || resolvedUrl);
+  }, [gridPreviewUrl, resolvedUrl]);
+
   return (
     <img
-      src={gridPreviewUrl || resolvedUrl}
+      src={imageSrc}
       alt={alt}
       className={className}
       onLoad={onLoadedData}
-      onError={onError}
+      onError={() => {
+        // Drive public thumbnails often 403; fall back to authenticated admin proxy.
+        if (imageSrc && resolvedUrl && imageSrc !== resolvedUrl) {
+          setImageSrc(resolvedUrl);
+          return;
+        }
+        onError?.();
+      }}
       {...MEDIA_PROTECT_IMAGE_PROPS}
       {...imageProps}
     />

@@ -26,6 +26,7 @@ Only log work that actually landed (commit or verified local change). Do not inv
 - **About highlight stack deck** — Mobile About cards stack with peek + swipe left/right (dots); desktop stays 3-up grid. `MinimalistEditorialPortfolio.jsx`.
 - **About deck vertical swipe** — Stack swipes up/down; subtle idle nudge + bounce “Swipe” guide; vertical dots. `MinimalistEditorialPortfolio.jsx`.
 - **Project image lightbox** — Project card images open a certificate-style preview dialog. `MinimalistEditorialPortfolio.jsx`.
+- **Admin gallery thumb fallback** — When Google Drive public thumbnails fail, MediaPreview falls back to the authenticated admin Drive proxy. `MediaPreview.jsx`.
 
 ## 2026-09-12
 
