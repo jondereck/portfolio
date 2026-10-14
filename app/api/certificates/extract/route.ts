@@ -10,7 +10,7 @@ import { createFieldErrorResponse, createFormErrorResponse } from '@/lib/server/
 import { STORAGE_PROVIDER_NEON, uploadObjectBuffer } from '@/lib/server/object-storage';
 import { renderPdfPagePreview } from '@/lib/server/pdf-preview';
 import { isRateLimited } from '@/lib/server/rate-limit';
-import { uploadCertificateAssetFile } from '@/lib/server/uploads';
+import { RequestValidationError, uploadCertificateAssetFile } from '@/lib/server/uploads';
 
 export const runtime = 'nodejs';
 
@@ -44,6 +44,14 @@ const previewFilenameFromPdf = (filename: string) => {
   return `${base}-preview.jpg`;
 };
 
+const toJpegDataUrl = (buffer: Buffer) => `data:image/jpeg;base64,${buffer.toString('base64')}`;
+
+const toImageDataUrl = (buffer: Buffer, mimeType: string) => {
+  const mime = (mimeType || 'image/jpeg').toLowerCase();
+  const safeMime = mime.startsWith('image/') ? mime : 'image/jpeg';
+  return `data:${safeMime};base64,${buffer.toString('base64')}`;
+};
+
 export async function POST(request: Request) {
   if (await isRateLimited(request, 'admin-mutation', 120, 60_000)) {
     return createFormErrorResponse({ error: 'Too many requests. Try again later.', errorCode: 'RATE_LIMITED' }, 429);
@@ -63,12 +71,12 @@ export async function POST(request: Request) {
     }
 
     const looksLikePdf = assetFile.type === 'application/pdf' || assetFile.name.toLowerCase().endsWith('.pdf');
-    const pdfBuffer = looksLikePdf ? Buffer.from(await assetFile.arrayBuffer()) : null;
+    const sourceBuffer = Buffer.from(await assetFile.arrayBuffer());
+    const pdfBuffer = looksLikePdf ? sourceBuffer : null;
     // Re-wrap so upload + preview share one buffer (File.arrayBuffer may be one-shot in some runtimes).
-    const fileForUpload =
-      pdfBuffer != null
-        ? new File([pdfBuffer], assetFile.name, { type: assetFile.type || 'application/pdf' })
-        : assetFile;
+    const fileForUpload = new File([sourceBuffer], assetFile.name, {
+      type: assetFile.type || (looksLikePdf ? 'application/pdf' : 'application/octet-stream'),
+    });
 
     const uploaded = await uploadCertificateAssetFile(fileForUpload, 'portfolio/certificates');
     const assetUrl = uploaded.secureUrl;
@@ -77,6 +85,7 @@ export async function POST(request: Request) {
     let warnings: string[] = [];
     let thumbnailUrl = assetUrl;
     let assetOpenUrl = assetUrl;
+    let extractionImageDataUrl: string | null = null;
 
     // Cloudinary PDFs: signed page-1 JPG delivery URL.
     if (isPdfUpload && uploaded.publicId) {
@@ -99,31 +108,50 @@ export async function POST(request: Request) {
       }
     }
 
-    // Neon PDFs: render page 1 locally and upload a JPG beside the original PDF.
+    // Neon PDFs: render page 1 locally, upload that JPG as the card/AI image (PDF stays as open/link fallback).
     if (isPdfUpload && uploaded.storageProvider === STORAGE_PROVIDER_NEON && pdfBuffer) {
       assetOpenUrl = assetUrl;
       const previewJpeg = await renderPdfPagePreview(pdfBuffer);
-      if (previewJpeg) {
-        try {
-          const previewUpload = await uploadObjectBuffer({
-            body: previewJpeg,
-            folder: 'portfolio/certificates',
-            contentType: 'image/jpeg',
-            filename: previewFilenameFromPdf(assetFile.name),
-          });
-          thumbnailUrl = previewUpload.publicUrl;
-        } catch {
-          warnings.push('PDF uploaded, but the page preview could not be stored. Card will show a PDF placeholder.');
-        }
-      } else {
-        warnings.push('PDF page preview could not be generated. Card will show a PDF placeholder.');
+      if (!previewJpeg) {
+        throw new RequestValidationError(
+          'Could not create an image preview from this PDF. Upload a PNG/JPG screenshot of the certificate instead.',
+          422,
+          { assetFile: ['PDF preview failed.'] },
+          'PDF_PREVIEW_FAILED',
+        );
       }
+
+      try {
+        const previewUpload = await uploadObjectBuffer({
+          body: previewJpeg,
+          folder: 'portfolio/certificates',
+          contentType: 'image/jpeg',
+          filename: previewFilenameFromPdf(assetFile.name),
+        });
+        thumbnailUrl = previewUpload.publicUrl;
+        extractionImageDataUrl = toJpegDataUrl(previewJpeg);
+      } catch (error) {
+        throw new RequestValidationError(
+          error instanceof Error && error.message
+            ? `PDF preview upload failed: ${error.message}`
+            : 'PDF preview upload failed.',
+          502,
+          { assetFile: ['Could not store certificate preview image.'] },
+          'PDF_PREVIEW_UPLOAD_FAILED',
+        );
+      }
+    }
+
+    // Non-PDF images: feed bytes directly so AI does not need to fetch Neon/Cloudinary URLs.
+    if (!isPdfUpload && sourceBuffer.length) {
+      extractionImageDataUrl = toImageDataUrl(sourceBuffer, assetFile.type || 'image/jpeg');
     }
 
     try {
       const extractionResult = await extractCertificateFieldsFromAsset({
         assetUrl: thumbnailUrl,
         filename: assetFile.name,
+        imageDataUrl: extractionImageDataUrl,
       });
       extractedFields = extractionResult.extractedFields;
       warnings = [...warnings, ...(extractionResult.warnings || [])];

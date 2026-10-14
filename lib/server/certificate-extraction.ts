@@ -62,7 +62,12 @@ function normalizeDateString(value: string | null | undefined) {
   return Number.isFinite(timestamp) ? normalized : undefined;
 }
 
-export async function extractCertificateFieldsFromAsset(options: { assetUrl: string; filename: string }) {
+export async function extractCertificateFieldsFromAsset(options: {
+  assetUrl: string;
+  filename: string;
+  /** Prefer a data URL / base64 image so extraction does not depend on fetching storage URLs. */
+  imageDataUrl?: string | null;
+}) {
   if (!openai) {
     throw new RequestValidationError(
       'Certificate extraction is not configured. Set OPENAI_API_KEY.',
@@ -72,9 +77,23 @@ export async function extractCertificateFieldsFromAsset(options: { assetUrl: str
     );
   }
 
+  const imageUrl =
+    typeof options.imageDataUrl === 'string' && options.imageDataUrl.trim()
+      ? options.imageDataUrl.trim()
+      : options.assetUrl;
+
+  if (!imageUrl) {
+    throw new RequestValidationError(
+      'Certificate image is required for extraction.',
+      400,
+      { assetFile: ['Upload an image or PDF certificate.'] },
+      'CERTIFICATE_IMAGE_REQUIRED',
+    );
+  }
+
   const assetInput = {
     type: 'input_image',
-    image_url: options.assetUrl,
+    image_url: imageUrl,
     detail: 'high',
   };
 

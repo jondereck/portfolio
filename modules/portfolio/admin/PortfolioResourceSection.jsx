@@ -3,6 +3,7 @@
 import DataTable from '@/components/DataTable';
 import FormDialog from '@/components/FormDialog';
 import { useAdminData } from '@/hooks/useAdminData';
+import AdminRefreshButton from '@/components/admin/shared/AdminRefreshButton';
 import AdminSectionHeader from '@/components/admin/shared/AdminSectionHeader';
 import PortfolioProjectsArrangeTable from '@/modules/portfolio/admin/PortfolioProjectsArrangeTable';
 import PortfolioCertificatesArrangeTable from '@/modules/portfolio/admin/PortfolioCertificatesArrangeTable';
@@ -81,14 +82,7 @@ export default function PortfolioResourceSection({ resource }) {
         description={`Manage ${title.toLowerCase()} entries, publish state, and metadata.`}
         actions={(
           <>
-            <button
-              type="button"
-              className="h-8 rounded-md px-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-              onClick={loadItems}
-              disabled={loading}
-            >
-              {loading ? 'Refreshing...' : 'Refresh'}
-            </button>
+            <AdminRefreshButton loading={loading} onClick={loadItems} />
             <button
               type="button"
               className="h-8 rounded-md bg-slate-900 px-3 text-sm text-white dark:bg-slate-100 dark:text-slate-900"

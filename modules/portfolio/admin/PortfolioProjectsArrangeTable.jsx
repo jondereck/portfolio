@@ -9,11 +9,13 @@ import { toast } from 'sonner';
 import { handleRequest } from '@/lib/handleRequest';
 import { normalizeFormError } from '@/lib/form-client';
 import { notifyRealtimeUpdate, revalidatePublicData } from '@/lib/realtime';
+import AdminListPagination, { getPagedSlice } from '@/components/admin/shared/AdminListPagination';
 import DeleteDialog from '@/components/DeleteDialog';
 
 const sectionTitleStyles = 'text-sm font-semibold text-slate-900 dark:text-slate-100';
 const sectionHintStyles = 'text-xs text-slate-500 dark:text-slate-400';
 const panelStyles = 'rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
+const ARRANGE_PAGE_SIZE = 10;
 
 const buildBuckets = (items) => {
   const featured = [];
@@ -146,6 +148,8 @@ export default function PortfolioProjectsArrangeTable({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [localFeatured, setLocalFeatured] = useState([]);
   const [localRegular, setLocalRegular] = useState([]);
+  const [featuredPage, setFeaturedPage] = useState(1);
+  const [regularPage, setRegularPage] = useState(1);
   const [activeId, setActiveId] = useState(null);
   const [orderSaving, setOrderSaving] = useState(false);
   const baselineRef = useRef({ featuredIds: [], regularIds: [] });
@@ -156,6 +160,8 @@ export default function PortfolioProjectsArrangeTable({
     const buckets = buildBuckets(items);
     setLocalFeatured(buckets.featured);
     setLocalRegular(buckets.regular);
+    setFeaturedPage(1);
+    setRegularPage(1);
     baselineRef.current = {
       featuredIds: buckets.featured.map((item) => item.id),
       regularIds: buckets.regular.map((item) => item.id),
@@ -164,6 +170,30 @@ export default function PortfolioProjectsArrangeTable({
 
   const featuredIds = useMemo(() => localFeatured.map((item) => item.id), [localFeatured]);
   const regularIds = useMemo(() => localRegular.map((item) => item.id), [localRegular]);
+
+  const featuredPaged = useMemo(
+    () => getPagedSlice(localFeatured, featuredPage, ARRANGE_PAGE_SIZE),
+    [localFeatured, featuredPage],
+  );
+  const regularPaged = useMemo(
+    () => getPagedSlice(localRegular, regularPage, ARRANGE_PAGE_SIZE),
+    [localRegular, regularPage],
+  );
+
+  useEffect(() => {
+    if (featuredPage !== featuredPaged.page) {
+      setFeaturedPage(featuredPaged.page);
+    }
+  }, [featuredPage, featuredPaged.page]);
+
+  useEffect(() => {
+    if (regularPage !== regularPaged.page) {
+      setRegularPage(regularPaged.page);
+    }
+  }, [regularPage, regularPaged.page]);
+
+  const visibleFeaturedIds = useMemo(() => featuredPaged.pageItems.map((item) => item.id), [featuredPaged.pageItems]);
+  const visibleRegularIds = useMemo(() => regularPaged.pageItems.map((item) => item.id), [regularPaged.pageItems]);
 
   const orderDirty = useMemo(() => {
     const base = baselineRef.current;
@@ -278,11 +308,11 @@ export default function PortfolioProjectsArrangeTable({
               <p className={sectionHintStyles}>Always shown at the top on the public portfolio.</p>
             </div>
             <DroppablePanel id="featured">
-              <SortableContext items={featuredIds} strategy={verticalListSortingStrategy}>
+              <SortableContext items={visibleFeaturedIds} strategy={verticalListSortingStrategy}>
                 {localFeatured.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-slate-500">No featured projects.</div>
                 ) : (
-                  localFeatured.map((item) => (
+                  featuredPaged.pageItems.map((item) => (
                     <SortableRow
                       key={item.id}
                       item={item}
@@ -294,19 +324,24 @@ export default function PortfolioProjectsArrangeTable({
                 )}
               </SortableContext>
             </DroppablePanel>
+            <AdminListPagination
+              page={featuredPaged.page}
+              totalPages={featuredPaged.totalPages}
+              onPageChange={setFeaturedPage}
+            />
           </div>
 
           <div className={panelStyles}>
             <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
               <p className={sectionTitleStyles}>Regular</p>
-              <p className={sectionHintStyles}>Paginated on the public portfolio.</p>
+              <p className={sectionHintStyles}>Paginated when the list is long.</p>
             </div>
             <DroppablePanel id="regular">
-              <SortableContext items={regularIds} strategy={verticalListSortingStrategy}>
+              <SortableContext items={visibleRegularIds} strategy={verticalListSortingStrategy}>
                 {localRegular.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-slate-500">No regular projects.</div>
                 ) : (
-                  localRegular.map((item) => (
+                  regularPaged.pageItems.map((item) => (
                     <SortableRow
                       key={item.id}
                       item={item}
@@ -318,6 +353,11 @@ export default function PortfolioProjectsArrangeTable({
                 )}
               </SortableContext>
             </DroppablePanel>
+            <AdminListPagination
+              page={regularPaged.page}
+              totalPages={regularPaged.totalPages}
+              onPageChange={setRegularPage}
+            />
           </div>
         </div>
 

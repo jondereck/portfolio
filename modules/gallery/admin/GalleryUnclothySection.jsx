@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import MediaPreview from '@/app/admin/gallery/components/MediaPreview';
+import AdminRefreshButton from '@/components/admin/shared/AdminRefreshButton';
 import { useUnclothyTasksStore } from '@/store/unclothyTasks';
 import { fetchJson, ghostButtonStyles } from './galleryAdminShared';
 import {
@@ -398,8 +399,8 @@ export default function GalleryUnclothySection({
           </p>
         </div>
 
-        <button
-          type="button"
+        <AdminRefreshButton
+          loading={status.loading}
           className={ghostButtonStyles}
           onClick={() => {
             if (displayTask?.phase === 'error') {
@@ -407,10 +408,7 @@ export default function GalleryUnclothySection({
             }
             loadStatus();
           }}
-          disabled={status.loading}
-        >
-          {status.loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        />
       </div>
 
       {showPreview && selectedPhoto ? (

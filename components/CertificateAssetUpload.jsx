@@ -7,22 +7,40 @@ import { handleRequest } from '@/lib/handleRequest';
 import { isPdfAssetUrl } from '@/lib/certificates';
 
 const acceptedTypes = 'image/png,image/jpeg,image/webp,image/gif,application/pdf';
+const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf']);
+
+const dropzoneBaseStyles =
+  'flex min-h-32 w-full cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600 dark:hover:bg-slate-900';
+
+function isAllowedCertificateFile(file) {
+  if (!file) return false;
+  if (ALLOWED_TYPES.has((file.type || '').toLowerCase())) return true;
+  return String(file.name || '')
+    .toLowerCase()
+    .endsWith('.pdf');
+}
 
 export default function CertificateAssetUpload({ id = 'certificate-asset-upload', label = 'Certificate File', value, onApply }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [warnings, setWarnings] = useState([]);
   const [sourceAssetUrl, setSourceAssetUrl] = useState('');
   const assetUrl = typeof value === 'string' ? value.trim() : '';
   const isPdf = isPdfAssetUrl(assetUrl);
 
   const openFilePicker = () => {
+    if (uploading) return;
     inputRef.current?.click();
   };
 
-  const handleFileChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
+  const uploadFile = async (file) => {
+    if (!file || uploading) {
+      return;
+    }
+
+    if (!isAllowedCertificateFile(file)) {
+      toast.error('Use PNG, JPG, WEBP, GIF, or PDF.');
       return;
     }
 
@@ -42,21 +60,22 @@ export default function CertificateAssetUpload({ id = 'certificate-asset-upload'
       );
 
       const extractedFields = result?.extractedFields && typeof result.extractedFields === 'object' ? result.extractedFields : {};
-      const assetUrl = typeof result?.assetUrl === 'string' ? result.assetUrl : '';
+      const nextAssetUrl = typeof result?.assetUrl === 'string' ? result.assetUrl : '';
       const assetOpenUrl =
-        typeof result?.assetOpenUrl === 'string' && result.assetOpenUrl.trim() ? result.assetOpenUrl.trim() : assetUrl;
-      const thumbnailUrl = typeof result?.thumbnailUrl === 'string' && result.thumbnailUrl.trim() ? result.thumbnailUrl.trim() : assetUrl;
-      setSourceAssetUrl(assetOpenUrl);
+        typeof result?.assetOpenUrl === 'string' && result.assetOpenUrl.trim() ? result.assetOpenUrl.trim() : nextAssetUrl;
+      // Card + AI use the page snapshot JPG for PDFs (not the raw PDF URL).
+      const thumbnailUrl =
+        typeof result?.thumbnailUrl === 'string' && result.thumbnailUrl.trim() ? result.thumbnailUrl.trim() : nextAssetUrl;
+      setSourceAssetUrl(result?.assetKind === 'pdf' ? assetOpenUrl || nextAssetUrl : '');
       const nextFields = {
-        // For PDFs, page-1 JPG snapshot (Neon/Cloudinary); for images, the asset URL.
         image: thumbnailUrl,
-        // Prefer extracted verify link; otherwise open the original PDF (not the JPG).
+        // Prefer extracted verify link; otherwise keep original PDF open URL for PDF uploads.
         link:
           typeof extractedFields.link === 'string' && extractedFields.link
             ? extractedFields.link
             : result?.assetKind === 'pdf'
-              ? assetOpenUrl || assetUrl || thumbnailUrl || ''
-              : assetOpenUrl || assetUrl || '',
+              ? assetOpenUrl || nextAssetUrl || thumbnailUrl || ''
+              : assetOpenUrl || nextAssetUrl || '',
       };
 
       for (const key of ['title', 'issuer', 'category', 'issuedAt', 'expiresAt', 'credentialId']) {
@@ -84,24 +103,73 @@ export default function CertificateAssetUpload({ id = 'certificate-asset-upload'
     }
   };
 
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) {
+      void uploadFile(file);
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <input ref={inputRef} id={id} type="file" accept={acceptedTypes} className="hidden" onChange={handleFileChange} />
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept={acceptedTypes}
+        className="hidden"
+        disabled={uploading}
+        onChange={handleFileChange}
+      />
 
       <button
         type="button"
         onClick={openFilePicker}
         disabled={uploading}
-        className="flex min-h-32 w-full items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+        onDragEnter={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!uploading) setIsDragActive(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!uploading) setIsDragActive(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setIsDragActive(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setIsDragActive(false);
+          if (uploading) return;
+          const file = event.dataTransfer.files?.[0];
+          if (file) {
+            void uploadFile(file);
+          }
+        }}
+        className={`${dropzoneBaseStyles} ${
+          isDragActive ? 'border-slate-900 bg-slate-50 dark:border-slate-100 dark:bg-slate-900' : ''
+        }`}
       >
         <div className="space-y-2">
           <div className="flex justify-center">
             {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
           </div>
           <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            {uploading ? 'Uploading and extracting…' : assetUrl ? 'Replace certificate image or PDF' : 'Upload certificate image or PDF'}
+            {uploading
+              ? 'Uploading and extracting…'
+              : isDragActive
+                ? 'Drop certificate file here'
+                : assetUrl
+                  ? 'Click or drag and drop to replace'
+                  : 'Click or drag and drop to upload'}
           </p>
-          <p className="text-xs text-slate-500">PNG, JPG, WEBP, GIF, or PDF. The form will auto-fill after upload.</p>
+          <p className="text-xs text-slate-500">PNG, JPG, WEBP, GIF, or PDF</p>
         </div>
       </button>
 

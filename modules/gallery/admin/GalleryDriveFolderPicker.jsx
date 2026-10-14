@@ -11,12 +11,12 @@ import {
   Folder,
   Home,
   Loader2,
-  RefreshCw,
   Search,
   X,
 } from 'lucide-react';
 import { FaGoogleDrive } from 'react-icons/fa';
 import AdminHint from '@/components/admin/shared/AdminHint';
+import AdminRefreshButton from '@/components/admin/shared/AdminRefreshButton';
 import { fetchJson } from './galleryAdminShared';
 
 const emptyBrowseState = {
@@ -336,15 +336,11 @@ export default function GalleryDriveFolderPicker({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        className="hidden h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:inline-flex"
+                      <AdminRefreshButton
+                        loading={browseState.loading}
                         onClick={() => loadFolders(currentParentId, { syncPending: false })}
-                        disabled={browseState.loading}
-                      >
-                        {browseState.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        {browseState.loading ? 'Refreshing...' : 'Refresh'}
-                      </button>
+                        className="hidden h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50 sm:inline-flex dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
+                      />
                       <button
                         type="button"
                         aria-label="Close"
