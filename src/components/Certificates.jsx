@@ -6,7 +6,12 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import useSWR from 'swr';
 import { FileText } from 'lucide-react';
-import { compareCertificatesForDisplay, isPdfAssetUrl } from '@/lib/certificates';
+import {
+  CERTIFICATE_SORT_MODES,
+  compareCertificatesForDisplay,
+  isPdfAssetUrl,
+  sortCertificatesByMode,
+} from '@/lib/certificates';
 import { isSafeHttpUrl } from '@/lib/url-safety';
 
 const EMPTY_ITEMS = [];
@@ -32,10 +37,10 @@ const CertificateCard = ({ item, index, onSelectImage }) => (
   <motion.article
     key={`${item.id ?? 'cert'}-${item.title}-${index}`}
     whileHover={{ y: -6 }}
-    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+    className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
   >
     {isPdfAssetUrl(item.image) ? (
-      <div className="flex h-56 w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
+      <div className="flex h-56 w-full shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
         <div className="text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-rose-600 shadow-sm dark:bg-slate-950/70 dark:text-rose-300">
             <FileText className="h-7 w-7" />
@@ -45,13 +50,13 @@ const CertificateCard = ({ item, index, onSelectImage }) => (
         </div>
       </div>
     ) : (
-      <button type="button" className="w-full" onClick={() => onSelectImage(item.image)}>
-        <div className="grid h-56 w-full place-items-center bg-white p-3">
+      <button type="button" className="block w-full shrink-0 overflow-hidden" onClick={() => onSelectImage(item.image)}>
+        <div className="flex aspect-[4/3] w-full min-h-0 items-center justify-center overflow-hidden bg-white p-1.5 sm:aspect-auto sm:h-56 sm:p-3">
           <img src={item.image} alt={`${item.title} certificate`} className="h-full w-full object-contain" />
         </div>
       </button>
     )}
-    <div className="space-y-2 p-4">
+    <div className="relative z-[1] min-h-0 flex-1 space-y-2 bg-white p-4 dark:bg-slate-900">
       <p className="text-sm font-semibold">{item.title}</p>
       <p className="text-xs text-slate-500">{item.issuer}</p>
       {item.issuedAt ? <p className="text-xs text-slate-500">Issued {new Date(item.issuedAt).toLocaleDateString()}</p> : null}
@@ -72,6 +77,7 @@ const CertificateCard = ({ item, index, onSelectImage }) => (
 
 const Certificates = ({ profileSlug = null }) => {
   const [activeCategory, setActiveCategory] = useState('All');
+  const [sortMode, setSortMode] = useState('default');
   const [selectedImage, setSelectedImage] = useState('');
   const [page, setPage] = useState(1);
   const itemsPerPage = 6;
@@ -92,12 +98,12 @@ const Certificates = ({ profileSlug = null }) => {
   }, [activeCategory, sortedItems]);
 
   const featuredCertificates = useMemo(
-    () => filteredCertificates.filter((item) => Boolean(item?.isFeatured)),
-    [filteredCertificates],
+    () => sortCertificatesByMode(filteredCertificates.filter((item) => Boolean(item?.isFeatured)), sortMode),
+    [filteredCertificates, sortMode],
   );
   const regularCertificates = useMemo(
-    () => filteredCertificates.filter((item) => !item?.isFeatured),
-    [filteredCertificates],
+    () => sortCertificatesByMode(filteredCertificates.filter((item) => !item?.isFeatured), sortMode),
+    [filteredCertificates, sortMode],
   );
 
   const totalPages = Math.ceil(regularCertificates.length / itemsPerPage);
@@ -105,7 +111,7 @@ const Certificates = ({ profileSlug = null }) => {
 
   useEffect(() => {
     setPage(1);
-  }, [activeCategory, items.length, regularCertificates.length]);
+  }, [activeCategory, sortMode, items.length, regularCertificates.length]);
 
   return (
     <SectionContainer
@@ -115,21 +121,40 @@ const Certificates = ({ profileSlug = null }) => {
     >
       {error ? <p className="mb-4 text-sm text-rose-600 dark:text-rose-300">{error instanceof Error ? error.message : 'Unable to load certificates'}</p> : null}
 
-      <div className="mb-8 flex flex-wrap gap-2">
-        {categories.map((category) => (
-          <button
-            key={category}
-            type="button"
-            onClick={() => setActiveCategory(category)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              activeCategory === category
-                ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200'
-            }`}
+      <div className="mb-8 flex min-w-0 flex-col gap-3">
+        <div className="min-w-0 overflow-x-auto [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max flex-nowrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setActiveCategory(category)}
+                className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition sm:px-4 ${
+                  activeCategory === category
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="inline-flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
+          <span className="text-xs font-semibold text-slate-500">Sort</span>
+          <select
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value)}
+            aria-label="Sort certificates"
+            className="h-9 min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:flex-none sm:min-w-[12rem]"
           >
-            {category}
-          </button>
-        ))}
+            {CERTIFICATE_SORT_MODES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {featuredCertificates.length > 0 ? (

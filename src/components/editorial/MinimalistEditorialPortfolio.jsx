@@ -6,7 +6,13 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { splitAboutHighlightPoints } from '@/lib/aboutHighlights';
-import { compareCertificatesForDisplay, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
+import {
+  CERTIFICATE_SORT_MODES,
+  compareCertificatesForDisplay,
+  isPdfAssetUrl,
+  sortCertificatesByMode,
+  toCloudinaryPdfPreviewUrl,
+} from '@/lib/certificates';
 import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { isSafeHttpUrl } from '@/lib/url-safety';
@@ -448,7 +454,7 @@ function Hero({ hero, projects, experience }) {
       .filter((value) => Number.isFinite(value))
       .sort((left, right) => left - right)[0];
     if (!Number.isFinite(first)) return '';
-    return `+${Math.max(1, Math.floor((Date.now() - first) / (365.25 * 24 * 60 * 60 * 1000)))}`;
+    return `${Math.max(1, Math.floor((Date.now() - first) / (365.25 * 24 * 60 * 60 * 1000)))}+`;
   })();
   const hasProjectMetric = projects.length > 0;
   const sideLabel = hero?.eyebrow || '';
@@ -465,7 +471,7 @@ function Hero({ hero, projects, experience }) {
             <div className="mb-7 flex gap-10">
               {hasProjectMetric ? (
                 <div>
-                  <p className="text-3xl font-light text-neutral-900 sm:text-4xl">+{projects.length}</p>
+                  <p className="text-3xl font-light text-neutral-900 sm:text-4xl">{projects.length}+</p>
                   <p className="mt-1 text-xs text-neutral-500">Projects</p>
                 </div>
               ) : null}
@@ -517,11 +523,12 @@ function Hero({ hero, projects, experience }) {
   );
 }
 
-function AboutHighlightCard({ item, className = '', style, ...props }) {
+function AboutHighlightCard({ item, className = '', style, cardRef, ...props }) {
   const points = splitAboutHighlightPoints(item.value);
 
   return (
     <article
+      ref={cardRef}
       className={cx(
         'rounded-3xl border border-neutral-200 bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,.08)] sm:p-7',
         className,
@@ -550,14 +557,16 @@ function AboutHighlightDeck({ highlights }) {
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [guideOffset, setGuideOffset] = useState(0);
-  const dragRef = useRef({ active: false, startY: 0 });
+  const frontRef = useRef(null);
+  // mode: null (undecided) | 'scroll' (page) | 'deck' (next card)
+  const dragRef = useRef({ mode: null, startY: 0, dy: 0, pointerId: null });
 
   useEffect(() => {
     if (count <= 1) return undefined;
 
     let step = 0;
     const timerId = window.setInterval(() => {
-      if (dragRef.current.active) {
+      if (dragRef.current.mode) {
         setGuideOffset(0);
         return;
       }
@@ -571,6 +580,76 @@ function AboutHighlightDeck({ highlights }) {
     return () => window.clearInterval(timerId);
   }, [count, active]);
 
+  // Touch intent lock: swipe up = page scroll; clear swipe down = next card.
+  useEffect(() => {
+    const el = frontRef.current;
+    if (!el || count <= 1) return undefined;
+
+    const reset = () => {
+      dragRef.current = { mode: null, startY: 0, dy: 0, pointerId: null };
+      setDragging(false);
+      setDragY(0);
+    };
+
+    const onStart = (event) => {
+      if (event.touches.length !== 1) return;
+      dragRef.current = {
+        mode: null,
+        startY: event.touches[0].clientY,
+        dy: 0,
+        pointerId: null,
+      };
+      setGuideOffset(0);
+    };
+
+    const onMove = (event) => {
+      const state = dragRef.current;
+      if (state.mode === 'scroll') return;
+      if (event.touches.length !== 1) return;
+
+      const dy = event.touches[0].clientY - state.startY;
+
+      if (state.mode === null) {
+        if (Math.abs(dy) < 10) return;
+        if (dy < 0) {
+          // Scroll up — do not preventDefault; page keeps scrolling.
+          state.mode = 'scroll';
+          return;
+        }
+        // Swipe down — take over so the card advances instead of the page.
+        state.mode = 'deck';
+        setDragging(true);
+      }
+
+      if (state.mode === 'deck') {
+        event.preventDefault();
+        state.dy = Math.max(0, dy);
+        setDragY(state.dy);
+      }
+    };
+
+    const onEnd = () => {
+      const state = dragRef.current;
+      const shouldAdvance = state.mode === 'deck' && state.dy >= 48;
+      reset();
+      if (shouldAdvance) {
+        setActive((current) => (current + 1) % count);
+      }
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd);
+    el.addEventListener('touchcancel', onEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
+    };
+  }, [count, active]);
+
   if (count === 0) {
     return null;
   }
@@ -580,31 +659,67 @@ function AboutHighlightDeck({ highlights }) {
   };
 
   const handlePointerDown = (event) => {
-    dragRef.current = { active: true, startY: event.clientY };
-    setDragging(true);
+    if (event.pointerType === 'touch') return;
+    dragRef.current = {
+      mode: null,
+      startY: event.clientY,
+      dy: 0,
+      pointerId: event.pointerId,
+    };
     setGuideOffset(0);
-    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const handlePointerMove = (event) => {
-    if (!dragRef.current.active) return;
-    // Swipe down only — ignore upward drag
-    setDragY(Math.max(0, event.clientY - dragRef.current.startY));
+    if (event.pointerType === 'touch') return;
+    const state = dragRef.current;
+    if (state.mode === 'scroll') return;
+    if (state.pointerId == null && state.mode === null && state.startY === 0) return;
+
+    const dy = event.clientY - state.startY;
+
+    if (state.mode === null) {
+      if (Math.abs(dy) < 10) return;
+      if (dy < 0) {
+        state.mode = 'scroll';
+        return;
+      }
+      state.mode = 'deck';
+      setDragging(true);
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+
+    if (state.mode === 'deck') {
+      state.dy = Math.max(0, dy);
+      setDragY(state.dy);
+    }
   };
 
-  const handlePointerUp = () => {
-    if (!dragRef.current.active) return;
-    dragRef.current.active = false;
+  const handlePointerUp = (event) => {
+    if (event.pointerType === 'touch') return;
+    const state = dragRef.current;
+    const shouldAdvance = state.mode === 'deck' && state.dy >= 48;
+    if (state.mode === 'deck' && state.pointerId != null) {
+      try {
+        event.currentTarget.releasePointerCapture(state.pointerId);
+      } catch {
+        // ignore
+      }
+    }
+    dragRef.current = { mode: null, startY: 0, dy: 0, pointerId: null };
     setDragging(false);
-    if (dragY >= 48) {
+    setDragY(0);
+    if (shouldAdvance) {
       goTo(active + 1);
     }
-    setDragY(0);
   };
 
   return (
     <div className="mt-8 md:hidden">
-      <div className="relative mx-auto w-full max-w-md touch-none pb-12">
+      <div className="relative mx-auto w-full max-w-md pb-12">
         {/* Keep layout height = active card so peek stack cannot cover content below */}
         <div className="invisible pointer-events-none" aria-hidden>
           <AboutHighlightCard item={highlights[active]} />
@@ -624,18 +739,20 @@ function AboutHighlightDeck({ highlights }) {
             <AboutHighlightCard
               key={item.label}
               item={item}
+              cardRef={isFront ? frontRef : undefined}
               onPointerDown={isFront ? handlePointerDown : undefined}
               onPointerMove={isFront ? handlePointerMove : undefined}
               onPointerUp={isFront ? handlePointerUp : undefined}
               onPointerCancel={isFront ? handlePointerUp : undefined}
               className={cx(
-                'absolute inset-x-0 top-0 cursor-grab touch-none active:cursor-grabbing',
+                'absolute inset-x-0 top-0 cursor-grab active:cursor-grabbing',
                 dragging && isFront ? 'transition-none' : 'transition-transform duration-300 ease-out',
               )}
               style={{
                 zIndex: count - offset,
                 transform: `translateY(${y}px) scale(${scale})`,
                 opacity: offset === 0 ? 1 : 0.92 - offset * 0.08,
+                touchAction: 'manipulation',
               }}
             />
           );
@@ -1018,9 +1135,62 @@ function Experience({ items, loading, error }) {
   );
 }
 
+function CertificateCard({ cert, index, onSelect }) {
+  const verifyLink = getSafeUrl(cert.link);
+  const certificateImage = getSafeImage(cert.image);
+  const isPdf = isPdfAssetUrl(cert.image);
+  const pdfPreview = isPdf && typeof cert.image === 'string' ? toCloudinaryPdfPreviewUrl(cert.image) : null;
+  const previewImage = pdfPreview || certificateImage;
+
+  return (
+    <article
+      key={cert.id ?? `${cert.title}-${index}`}
+      className="flex min-h-0 flex-col overflow-hidden rounded-3xl bg-white shadow-[0_18px_45px_rgba(0,0,0,.05)]"
+    >
+      <div className="relative flex aspect-[4/3] w-full shrink-0 items-center justify-center overflow-hidden bg-[#fbfaf7] sm:aspect-auto sm:h-56">
+        {previewImage ? (
+          <button
+            type="button"
+            className="flex h-full min-h-0 w-full items-center justify-center p-1.5 sm:p-3"
+            onClick={() => onSelect({ title: cert.title, imageUrl: previewImage, pdfUrl: isPdf ? cert.image : null, isPdf })}
+          >
+            <img
+              src={previewImage}
+              alt={`${cert.title} certificate`}
+              className="h-full w-full object-contain"
+            />
+          </button>
+        ) : (
+          <div className="m-4 flex h-full w-full flex-col items-center justify-center rounded-2xl border border-neutral-200 bg-white text-center">
+            <Icon name="certificate" className="h-8 w-8 text-neutral-500" />
+            <p className="mt-2 text-xs font-medium uppercase text-neutral-400">
+              {isPdf ? 'PDF Certificate' : 'Verified Certificate'}
+            </p>
+          </div>
+        )}
+      </div>
+      <div className="relative z-[1] flex min-h-0 flex-1 flex-col bg-white p-4 sm:p-5">
+        {cert.category ? (
+          <span className="inline-flex w-fit rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-700">
+            {cert.category}
+          </span>
+        ) : null}
+        <h3 className="mt-2 text-lg font-medium leading-tight text-neutral-950 sm:min-h-[52px] sm:text-xl">{cert.title}</h3>
+        <p className="mt-2 text-sm text-neutral-500">{cert.issuer}</p>
+        {verifyLink ? (
+          <a href={verifyLink} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-neutral-950">
+            Verify <Icon name="arrowUp" className="h-3.5 w-3.5" />
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 function Certificates({ items, error }) {
   const isMdUp = useIsMdUp();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [sortMode, setSortMode] = useState('default');
   const [page, setPage] = useState(1);
   const [selectedCert, setSelectedCert] = useState(null);
   const itemsPerPage = isMdUp ? 6 : 3;
@@ -1028,12 +1198,26 @@ function Certificates({ items, error }) {
   const displayItems = sorted;
   const categories = ['All', ...Array.from(new Set(displayItems.map((item) => item.category).filter(Boolean)))];
   const filtered = activeCategory === 'All' ? displayItems : displayItems.filter((item) => item.category === activeCategory);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
-  const pageItems = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const featuredItems = useMemo(
+    () => sortCertificatesByMode(filtered.filter((item) => Boolean(item?.isFeatured)), sortMode),
+    [filtered, sortMode],
+  );
+  const regularItems = useMemo(
+    () => sortCertificatesByMode(filtered.filter((item) => !item?.isFeatured), sortMode),
+    [filtered, sortMode],
+  );
+  const totalPages = Math.max(1, Math.ceil(regularItems.length / itemsPerPage));
+  const pageItems = regularItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   useEffect(() => {
     setPage(1);
-  }, [activeCategory, items.length, itemsPerPage]);
+  }, [activeCategory, sortMode, items.length, itemsPerPage, regularItems.length]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
 
   if (!error && displayItems.length === 0) {
     return null;
@@ -1050,74 +1234,73 @@ function Certificates({ items, error }) {
               Credentials that back the work — verified skills from trusted programs.
             </p>
           </div>
-          <div className="-mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:overflow-visible sm:px-0">
-            <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
-              {categories.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setActiveCategory(filter)}
-                  className={cx(
-                    'shrink-0 rounded-full border px-4 py-2 text-xs font-medium',
-                    activeCategory === filter ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-300 bg-white text-neutral-600',
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="-mx-5 min-w-0 overflow-x-auto px-5 [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">
+              <div className="flex w-max flex-nowrap gap-2">
+                {categories.map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setActiveCategory(filter)}
+                    className={cx(
+                      'shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium sm:px-4',
+                      activeCategory === filter ? 'border-neutral-950 bg-neutral-950 text-white' : 'border-neutral-300 bg-white text-neutral-600',
+                    )}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
             </div>
+            <label className="inline-flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
+              <span className="text-xs font-medium text-neutral-500">Sort</span>
+              <select
+                value={sortMode}
+                onChange={(event) => setSortMode(event.target.value)}
+                aria-label="Sort certificates"
+                className="h-9 min-w-0 flex-1 rounded-full border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-700 sm:flex-none sm:min-w-[12rem]"
+              >
+                {CERTIFICATE_SORT_MODES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
         {error ? <p className="mb-4 text-sm text-rose-600">{error.message}</p> : null}
-        <div className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {pageItems.map((cert, index) => {
-            const verifyLink = getSafeUrl(cert.link);
-            const certificateImage = getSafeImage(cert.image);
-            const isPdf = isPdfAssetUrl(cert.image);
-            const pdfPreview = isPdf && typeof cert.image === 'string' ? toCloudinaryPdfPreviewUrl(cert.image) : null;
-            const previewImage = pdfPreview || certificateImage;
-            return (
-              <article key={cert.id ?? `${cert.title}-${index}`} className="overflow-hidden rounded-3xl bg-white shadow-[0_18px_45px_rgba(0,0,0,.05)]">
-                <div className="grid h-40 place-items-center bg-[#fbfaf7] sm:h-56">
-                  {previewImage ? (
-                    <button
-                      type="button"
-                      className="h-full w-full"
-                      onClick={() => setSelectedCert({ title: cert.title, imageUrl: previewImage, pdfUrl: isPdf ? cert.image : null, isPdf })}
-                    >
-                      <div className="grid h-full w-full place-items-center bg-white/60 p-4">
-                        <div className="grid h-full w-full place-items-center rounded-2xl border border-neutral-200 bg-white p-2">
-                          <img src={previewImage} alt={`${cert.title} certificate`} className="h-full w-full object-contain" />
-                        </div>
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="m-5 grid h-28 w-full max-w-xs place-items-center rounded-2xl border border-neutral-200 bg-white text-center">
-                      <Icon name="certificate" className="h-8 w-8 text-neutral-500" />
-                      <p className="mt-2 text-xs font-medium uppercase text-neutral-400">
-                        {isPdf ? 'PDF Certificate' : 'Verified Certificate'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4 sm:p-5">
-                  {cert.category ? (
-                    <span className="inline-flex rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-700">
-                      {cert.category}
-                    </span>
-                  ) : null}
-                  <h3 className="mt-2 text-lg font-medium leading-tight text-neutral-950 sm:min-h-[52px] sm:text-xl">{cert.title}</h3>
-                  <p className="mt-2 text-sm text-neutral-500">{cert.issuer}</p>
-                  {verifyLink ? (
-                    <a href={verifyLink} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-medium text-neutral-950">
-                      Verify <Icon name="arrowUp" className="h-3.5 w-3.5" />
-                    </a>
-                  ) : null}
-                </div>
-              </article>
-            );
-          })}
-        </div>
+
+        {featuredItems.length > 0 ? (
+          <div className={regularItems.length > 0 ? 'mb-10' : ''}>
+            <div className="mb-4 flex items-end gap-3">
+              <p className="text-sm font-medium text-neutral-950">Featured</p>
+              <div className="h-px flex-1 bg-neutral-200" aria-hidden />
+            </div>
+            <div className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {featuredItems.map((cert, index) => (
+                <CertificateCard key={cert.id ?? `${cert.title}-featured-${index}`} cert={cert} index={index} onSelect={setSelectedCert} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {regularItems.length > 0 ? (
+          <div>
+            {featuredItems.length > 0 ? (
+              <div className="mb-4 flex items-end gap-3">
+                <p className="text-sm font-medium text-neutral-950">All certificates</p>
+                <div className="h-px flex-1 bg-neutral-200" aria-hidden />
+              </div>
+            ) : null}
+            <div className="grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {pageItems.map((cert, index) => (
+                <CertificateCard key={cert.id ?? `${cert.title}-${index}`} cert={cert} index={index} onSelect={setSelectedCert} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {totalPages > 1 ? (
           <div className="mt-8 flex items-center justify-center gap-3">
             <button type="button" onClick={() => setPage((value) => Math.max(value - 1, 1))} disabled={page === 1} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-xs font-medium text-neutral-600 disabled:cursor-not-allowed disabled:opacity-40">
