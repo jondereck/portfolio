@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { splitAboutHighlightPoints } from '@/lib/aboutHighlights';
-import { compareCertificatesForDisplay, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
+import { compareCertificatesForDisplay, resolveCertificateCardMedia } from '@/lib/certificates';
 import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { isSafeHttpUrl } from '@/lib/url-safety';
@@ -542,22 +542,30 @@ function CertificatesSection({ profileSlug }) {
       {error ? <p className="error-text">{error.message}</p> : null}
       <div className="cards-3">
         {pageItems.map((cert, index) => {
-          const certificateImage = getSafeImage(cert.image);
-          const isPdf = isPdfAssetUrl(cert.image);
-          const pdfPreview = isPdf && typeof cert.image === 'string' ? toCloudinaryPdfPreviewUrl(cert.image) : null;
-          const previewImage = pdfPreview || certificateImage;
+          const media = resolveCertificateCardMedia(cert.image);
+          const previewImage = getSafeImage(media.previewImage);
           return (
             <article key={`${cert.id ?? 'cert'}-${cert.title}-${index}`} className="panel card tilt certificate-card">
               <button
                 type="button"
                 className="cert-button"
                 onClick={() => {
-                  const imageUrl = previewImage || '';
-                  setSelectedCert(imageUrl ? { title: cert.title, imageUrl, pdfUrl: isPdf ? cert.image : null, isPdf } : null);
+                  if (previewImage || (media.isPdf && media.pdfUrl)) {
+                    setSelectedCert({
+                      title: cert.title,
+                      imageUrl: previewImage || null,
+                      pdfUrl: media.isPdf ? media.pdfUrl : null,
+                      isPdf: media.isPdf,
+                    });
+                  }
                 }}
               >
                 <div className="cert-top">
-                  {previewImage ? <img src={previewImage} alt={`${cert.title} certificate`} /> : <span>Verified Certificate</span>}
+                  {previewImage ? (
+                    <img src={previewImage} alt={`${cert.title} certificate`} />
+                  ) : (
+                    <span>{media.isPdf ? 'PDF Certificate' : 'Verified Certificate'}</span>
+                  )}
                 </div>
               </button>
               <div className="certificate-body">

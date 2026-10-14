@@ -9,9 +9,8 @@ import { splitAboutHighlightPoints } from '@/lib/aboutHighlights';
 import {
   CERTIFICATE_SORT_MODES,
   compareCertificatesForDisplay,
-  isPdfAssetUrl,
+  resolveCertificateCardMedia,
   sortCertificatesByMode,
-  toCloudinaryPdfPreviewUrl,
 } from '@/lib/certificates';
 import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
@@ -1137,10 +1136,9 @@ function Experience({ items, loading, error }) {
 
 function CertificateCard({ cert, index, onSelect }) {
   const verifyLink = getSafeUrl(cert.link);
-  const certificateImage = getSafeImage(cert.image);
-  const isPdf = isPdfAssetUrl(cert.image);
-  const pdfPreview = isPdf && typeof cert.image === 'string' ? toCloudinaryPdfPreviewUrl(cert.image) : null;
-  const previewImage = pdfPreview || certificateImage;
+  const media = resolveCertificateCardMedia(cert.image);
+  const previewImage = getSafeImage(media.previewImage);
+  const pdfUrl = getSafeImage(media.pdfUrl);
 
   return (
     <article
@@ -1152,7 +1150,7 @@ function CertificateCard({ cert, index, onSelect }) {
           <button
             type="button"
             className="flex h-full min-h-0 w-full items-center justify-center p-1.5 sm:p-3"
-            onClick={() => onSelect({ title: cert.title, imageUrl: previewImage, pdfUrl: isPdf ? cert.image : null, isPdf })}
+            onClick={() => onSelect({ title: cert.title, imageUrl: previewImage, pdfUrl: media.isPdf ? pdfUrl : null, isPdf: media.isPdf })}
           >
             <img
               src={previewImage}
@@ -1160,12 +1158,19 @@ function CertificateCard({ cert, index, onSelect }) {
               className="h-full w-full object-contain"
             />
           </button>
+        ) : media.isPdf && pdfUrl ? (
+          <button
+            type="button"
+            className="m-4 flex h-full w-full flex-col items-center justify-center rounded-2xl border border-neutral-200 bg-white text-center"
+            onClick={() => onSelect({ title: cert.title, imageUrl: null, pdfUrl, isPdf: true })}
+          >
+            <Icon name="certificate" className="h-8 w-8 text-neutral-500" />
+            <p className="mt-2 text-xs font-medium uppercase text-neutral-400">PDF Certificate</p>
+          </button>
         ) : (
           <div className="m-4 flex h-full w-full flex-col items-center justify-center rounded-2xl border border-neutral-200 bg-white text-center">
             <Icon name="certificate" className="h-8 w-8 text-neutral-500" />
-            <p className="mt-2 text-xs font-medium uppercase text-neutral-400">
-              {isPdf ? 'PDF Certificate' : 'Verified Certificate'}
-            </p>
+            <p className="mt-2 text-xs font-medium uppercase text-neutral-400">Verified Certificate</p>
           </div>
         )}
       </div>

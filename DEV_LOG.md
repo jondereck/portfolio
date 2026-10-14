@@ -8,6 +8,8 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ## 2026-10-14
 
+- **Neon PDF page snapshot on upload** — Certificate extract now renders PDF page 1 to JPEG (`unpdf` + `@napi-rs/canvas` + `sharp`), uploads it beside the PDF on Neon, and saves that JPG as `image` (link keeps verify URL or original PDF). Re-upload existing Neon PDF certs once for a real card preview. `lib/server/pdf-preview.ts`, `app/api/certificates/extract/route.ts`, `CertificateAssetUpload.jsx`, `next.config.mjs`.
+- **Neon PDF certificates preview** — Cards no longer force Neon/raw PDF URLs into `<img>` (broken icon). Show PDF Certificate tile + open via iframe dialog; Cloudinary page JPG preview still used when available. `lib/certificates.ts`, Minimalist/Neo/Immersive/Bento certificate cards.
 - **Certificates filter bar responsive** — Category chips stay a single horizontal swipe row on all breakpoints (no tall wrap); Sort stays pinned beside the scroller. `MinimalistEditorialPortfolio.jsx`.
 - **Mobile cert preview fuller** — Certificate card media uses wider `aspect-[4/3]` + less nested padding so previews fill the card on mobile without covering text. `MinimalistEditorialPortfolio.jsx`, `Certificates.jsx`.
 - **Mobile certificate card overlap** — Image media area now uses contained flex (`shrink-0` + `overflow-hidden` + `min-h-0` / `max-h-full`) so category/title/issuer sit cleanly below the preview on ~375px instead of painting over the image. Same containment on classic cards. `MinimalistEditorialPortfolio.jsx`, `Certificates.jsx`.

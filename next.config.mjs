@@ -7,6 +7,8 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: __dirname,
+  // Native/canvas + PDF.js must stay external for Neon PDF page snapshots.
+  serverExternalPackages: ['@napi-rs/canvas', 'pdfjs-dist', 'unpdf', 'sharp'],
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
     const scriptSrc = isProd

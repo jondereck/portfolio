@@ -39,6 +39,23 @@ export function toCloudinaryPdfPreviewUrl(assetUrl: string) {
   }
 }
 
+/**
+ * Resolve what the certificate card should show.
+ * Neon/raw PDFs cannot paint in <img>; only Cloudinary page JPGs (or real images) can.
+ */
+export function resolveCertificateCardMedia(image: unknown) {
+  const assetUrl = typeof image === 'string' ? image.trim() : '';
+  const isPdf = isPdfAssetUrl(assetUrl);
+  const pdfPreview = isPdf ? toCloudinaryPdfPreviewUrl(assetUrl) : null;
+  const previewImage = pdfPreview || (!isPdf && assetUrl ? assetUrl : '');
+
+  return {
+    isPdf,
+    pdfUrl: isPdf ? assetUrl : null,
+    previewImage,
+  };
+}
+
 export const CERTIFICATE_SORT_MODES = [
   { value: 'default', label: 'Featured · arranged' },
   { value: 'issued-newest', label: 'Issued · newest' },

@@ -9,7 +9,7 @@ import { FileText } from 'lucide-react';
 import {
   CERTIFICATE_SORT_MODES,
   compareCertificatesForDisplay,
-  isPdfAssetUrl,
+  resolveCertificateCardMedia,
   sortCertificatesByMode,
 } from '@/lib/certificates';
 import { isSafeHttpUrl } from '@/lib/url-safety';
@@ -33,52 +33,74 @@ const withProfile = (path, profileSlug) => {
   return `${path}${joiner}profile=${encodeURIComponent(profileSlug)}`;
 };
 
-const CertificateCard = ({ item, index, onSelectImage }) => (
-  <motion.article
-    key={`${item.id ?? 'cert'}-${item.title}-${index}`}
-    whileHover={{ y: -6 }}
-    className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-  >
-    {isPdfAssetUrl(item.image) ? (
-      <div className="flex h-56 w-full shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
-        <div className="text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-rose-600 shadow-sm dark:bg-slate-950/70 dark:text-rose-300">
-            <FileText className="h-7 w-7" />
-          </div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">PDF Certificate</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Open from the Verify link</p>
-        </div>
-      </div>
-    ) : (
-      <button type="button" className="block w-full shrink-0 overflow-hidden" onClick={() => onSelectImage(item.image)}>
-        <div className="flex aspect-[4/3] w-full min-h-0 items-center justify-center overflow-hidden bg-white p-1.5 sm:aspect-auto sm:h-56 sm:p-3">
-          <img src={item.image} alt={`${item.title} certificate`} className="h-full w-full object-contain" />
-        </div>
-      </button>
-    )}
-    <div className="relative z-[1] min-h-0 flex-1 space-y-2 bg-white p-4 dark:bg-slate-900">
-      <p className="text-sm font-semibold">{item.title}</p>
-      <p className="text-xs text-slate-500">{item.issuer}</p>
-      {item.issuedAt ? <p className="text-xs text-slate-500">Issued {new Date(item.issuedAt).toLocaleDateString()}</p> : null}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{item.category}</span>
-        <a
-          href={isSafeHttpUrl(item.link) ? item.link : '#'}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-full border border-cyan-400 px-3 py-1 text-xs font-semibold text-cyan-600 transition hover:bg-cyan-500 hover:text-white dark:text-cyan-300"
+const CertificateCard = ({ item, index, onSelect }) => {
+  const media = resolveCertificateCardMedia(item.image);
+  const previewImage = isSafeHttpUrl(media.previewImage) ? media.previewImage : '';
+  const pdfUrl = isSafeHttpUrl(media.pdfUrl) ? media.pdfUrl : '';
+
+  return (
+    <motion.article
+      key={`${item.id ?? 'cert'}-${item.title}-${index}`}
+      whileHover={{ y: -6 }}
+      className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+    >
+      {previewImage ? (
+        <button
+          type="button"
+          className="block w-full shrink-0 overflow-hidden"
+          onClick={() => onSelect({ title: item.title, imageUrl: previewImage, pdfUrl: media.isPdf ? pdfUrl : null, isPdf: media.isPdf })}
         >
-          Verify
-        </a>
+          <div className="flex aspect-[4/3] w-full min-h-0 items-center justify-center overflow-hidden bg-white p-1.5 sm:aspect-auto sm:h-56 sm:p-3">
+            <img src={previewImage} alt={`${item.title} certificate`} className="h-full w-full object-contain" />
+          </div>
+        </button>
+      ) : media.isPdf && pdfUrl ? (
+        <button
+          type="button"
+          className="flex h-56 w-full shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900"
+          onClick={() => onSelect({ title: item.title, imageUrl: null, pdfUrl, isPdf: true })}
+        >
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-rose-600 shadow-sm dark:bg-slate-950/70 dark:text-rose-300">
+              <FileText className="h-7 w-7" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">PDF Certificate</p>
+          </div>
+        </button>
+      ) : (
+        <div className="flex h-56 w-full shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
+          <div className="text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 text-rose-600 shadow-sm dark:bg-slate-950/70 dark:text-rose-300">
+              <FileText className="h-7 w-7" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-100">Verified Certificate</p>
+          </div>
+        </div>
+      )}
+      <div className="relative z-[1] min-h-0 flex-1 space-y-2 bg-white p-4 dark:bg-slate-900">
+        <p className="text-sm font-semibold">{item.title}</p>
+        <p className="text-xs text-slate-500">{item.issuer}</p>
+        {item.issuedAt ? <p className="text-xs text-slate-500">Issued {new Date(item.issuedAt).toLocaleDateString()}</p> : null}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{item.category}</span>
+          <a
+            href={isSafeHttpUrl(item.link) ? item.link : '#'}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-cyan-400 px-3 py-1 text-xs font-semibold text-cyan-600 transition hover:bg-cyan-500 hover:text-white dark:text-cyan-300"
+          >
+            Verify
+          </a>
+        </div>
       </div>
-    </div>
-  </motion.article>
-);
+    </motion.article>
+  );
+};
 
 const Certificates = ({ profileSlug = null }) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortMode, setSortMode] = useState('default');
-  const [selectedImage, setSelectedImage] = useState('');
+  const [selectedCert, setSelectedCert] = useState(null);
   const [page, setPage] = useState(1);
   const itemsPerPage = 6;
   const { data, error } = useSWR(withProfile('/api/certificates', profileSlug), fetcher);
@@ -165,7 +187,7 @@ const Certificates = ({ profileSlug = null }) => {
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {featuredCertificates.map((item, index) => (
-              <CertificateCard key={item.id ?? `${item.title}-featured-${index}`} item={item} index={index} onSelectImage={setSelectedImage} />
+              <CertificateCard key={item.id ?? `${item.title}-featured-${index}`} item={item} index={index} onSelect={setSelectedCert} />
             ))}
           </div>
         </div>
@@ -181,7 +203,7 @@ const Certificates = ({ profileSlug = null }) => {
           ) : null}
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {paginatedData.map((item, index) => (
-              <CertificateCard key={item.id ?? `${item.title}-${index}`} item={item} index={index} onSelectImage={setSelectedImage} />
+              <CertificateCard key={item.id ?? `${item.title}-${index}`} item={item} index={index} onSelect={setSelectedCert} />
             ))}
           </div>
         </div>
@@ -215,11 +237,15 @@ const Certificates = ({ profileSlug = null }) => {
         </Pagination>
       ) : null}
 
-      <Dialog open={Boolean(selectedImage)} onOpenChange={(isOpen) => setSelectedImage(isOpen ? selectedImage : '')}>
+      <Dialog open={Boolean(selectedCert)} onOpenChange={(isOpen) => setSelectedCert(isOpen ? selectedCert : null)}>
         <DialogContent className="max-w-4xl bg-white p-3 dark:bg-slate-900">
-          <DialogTitle className="sr-only">Certificate preview</DialogTitle>
+          <DialogTitle className="sr-only">{selectedCert?.title || 'Certificate preview'}</DialogTitle>
           <DialogDescription className="sr-only">Full-size certificate preview.</DialogDescription>
-          <img src={selectedImage} alt="Certificate preview" className="max-h-[80vh] w-full object-contain" />
+          {selectedCert?.isPdf && typeof selectedCert.pdfUrl === 'string' ? (
+            <iframe title={selectedCert.title || 'Certificate preview'} src={selectedCert.pdfUrl} className="h-[80vh] w-full rounded-lg border border-slate-200 bg-white dark:border-slate-700" />
+          ) : selectedCert?.imageUrl ? (
+            <img src={selectedCert.imageUrl} alt={selectedCert.title || 'Certificate preview'} className="max-h-[80vh] w-full object-contain" />
+          ) : null}
         </DialogContent>
       </Dialog>
     </SectionContainer>

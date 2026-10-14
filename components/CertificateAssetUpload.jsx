@@ -48,16 +48,14 @@ export default function CertificateAssetUpload({ id = 'certificate-asset-upload'
       const thumbnailUrl = typeof result?.thumbnailUrl === 'string' && result.thumbnailUrl.trim() ? result.thumbnailUrl.trim() : assetUrl;
       setSourceAssetUrl(assetOpenUrl);
       const nextFields = {
-        // For PDFs, this will be the converted page-1 JPG; for images, it will be the image URL.
+        // For PDFs, page-1 JPG snapshot (Neon/Cloudinary); for images, the asset URL.
         image: thumbnailUrl,
-        // Prefer extracted verify link; otherwise:
-        // - for PDFs, use the thumbnail URL (so it opens reliably in-browser)
-        // - for images, use the uploaded asset URL
+        // Prefer extracted verify link; otherwise open the original PDF (not the JPG).
         link:
           typeof extractedFields.link === 'string' && extractedFields.link
             ? extractedFields.link
             : result?.assetKind === 'pdf'
-              ? thumbnailUrl || assetOpenUrl || assetUrl || ''
+              ? assetOpenUrl || assetUrl || thumbnailUrl || ''
               : assetOpenUrl || assetUrl || '',
       };
 
@@ -132,7 +130,7 @@ export default function CertificateAssetUpload({ id = 'certificate-asset-upload'
         )
       ) : null}
 
-      {sourceAssetUrl ? (
+      {sourceAssetUrl && isPdfAssetUrl(sourceAssetUrl) ? (
         <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-950">
           <span className="text-slate-500 dark:text-slate-400">Original uploaded file:</span>{' '}
           <a href={sourceAssetUrl} target="_blank" rel="noreferrer" className="text-cyan-600 hover:underline dark:text-cyan-300">

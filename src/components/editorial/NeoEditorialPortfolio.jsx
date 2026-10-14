@@ -10,7 +10,7 @@ import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { useLoadingStore } from '@/store/loading';
 import { isSafeHttpUrl } from '@/lib/url-safety';
-import { compareCertificatesForDisplay, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
+import { compareCertificatesForDisplay, resolveCertificateCardMedia } from '@/lib/certificates';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/src/components/ui/dialog';
 
 const cx = (...classes) => classes.filter(Boolean).join(' ');
@@ -853,21 +853,22 @@ function CertificatesSection({ profileSlug }) {
         {error ? <p className="mb-4 text-sm font-bold text-rose-700">{error.message}</p> : null}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {pageItems.map((cert, index) => {
-            const certificateImage = getSafeImage(cert.image);
-            const isPdf = isPdfAssetUrl(cert.image);
-            const pdfPreview = isPdf && typeof cert.image === 'string' ? toCloudinaryPdfPreviewUrl(cert.image) : null;
-            const previewImage = pdfPreview || certificateImage;
+            const media = resolveCertificateCardMedia(cert.image);
+            const previewImage = getSafeImage(media.previewImage);
+            const pdfUrl = getSafeImage(media.pdfUrl);
             return (
               <article key={`${cert.id ?? 'cert'}-${cert.title}-${index}`} className="overflow-hidden rounded-[24px] border-2 border-[#101010] bg-[#fffdf8]">
                 <button
                   type="button"
                   onClick={() => {
-                    const imageUrl = previewImage || '';
-                    setSelectedCert(
-                      imageUrl
-                        ? { title: cert.title, imageUrl, pdfUrl: isPdf ? cert.image : null, isPdf }
-                        : null,
-                    );
+                    if (previewImage || (media.isPdf && pdfUrl)) {
+                      setSelectedCert({
+                        title: cert.title,
+                        imageUrl: previewImage || null,
+                        pdfUrl: media.isPdf ? pdfUrl : null,
+                        isPdf: media.isPdf,
+                      });
+                    }
                   }}
                   className="block w-full text-left"
                 >
@@ -883,7 +884,7 @@ function CertificatesSection({ profileSlug }) {
                     ) : (
                       <div className="grid h-36 w-full max-w-[260px] place-items-center rounded-[18px] border-2 border-[#101010] bg-white p-3 text-center">
                         <Icon name="file" className="h-9 w-9 text-[#ff6a2a]" />
-                        <p className="mt-2 text-xs font-black">{isPdf ? 'PDF Certificate' : cert.credentialId || cert.issuer}</p>
+                        <p className="mt-2 text-xs font-black">{media.isPdf ? 'PDF Certificate' : cert.credentialId || cert.issuer}</p>
                       </div>
                     )}
                   </div>

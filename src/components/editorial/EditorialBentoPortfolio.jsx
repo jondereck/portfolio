@@ -10,7 +10,7 @@ import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { useLoadingStore } from '@/store/loading';
 import { isSafeHttpUrl } from '@/lib/url-safety';
-import { compareCertificatesForDisplay, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
+import { compareCertificatesForDisplay, resolveCertificateCardMedia } from '@/lib/certificates';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/src/components/ui/dialog';
 
 const cx = (...classes) => classes.filter(Boolean).join(' ');
@@ -832,10 +832,8 @@ function Certificates({ profileSlug }) {
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {pageItems.map((cert, index) => {
-            const certificateImage = getSafeImage(cert.image);
-            const isPdf = isPdfAssetUrl(cert.image);
-            const pdfPreview = isPdf && typeof cert.image === 'string' ? toCloudinaryPdfPreviewUrl(cert.image) : null;
-            const previewImage = pdfPreview || certificateImage;
+            const media = resolveCertificateCardMedia(cert.image);
+            const previewImage = getSafeImage(media.previewImage);
 
             return (
               <article key={`${cert.id ?? 'cert'}-${cert.title}-${index}`} className="overflow-hidden rounded-[2rem] border-[3px] border-slate-950 bg-white shadow-[8px_8px_0_#0f172a]">
@@ -845,7 +843,7 @@ function Certificates({ profileSlug }) {
                     <button
                       type="button"
                       className="h-full w-full"
-                      onClick={() => setSelectedCert({ title: cert.title, imageUrl: previewImage, pdfUrl: isPdf ? cert.image : null, isPdf })}
+                      onClick={() => setSelectedCert({ title: cert.title, imageUrl: previewImage, pdfUrl: media.isPdf ? media.pdfUrl : null, isPdf: media.isPdf })}
                     >
                       <div className="grid h-full w-full place-items-center bg-white/50 p-4">
                         <div className="grid h-full w-full place-items-center rounded-2xl border-2 border-slate-950 bg-white p-2">
@@ -853,13 +851,23 @@ function Certificates({ profileSlug }) {
                         </div>
                       </div>
                     </button>
+                  ) : media.isPdf && media.pdfUrl ? (
+                    <button
+                      type="button"
+                      className="grid h-full w-full place-items-center p-5"
+                      onClick={() => setSelectedCert({ title: cert.title, imageUrl: null, pdfUrl: media.pdfUrl, isPdf: true })}
+                    >
+                      <div className="grid h-full w-full place-items-center rounded-2xl border-2 border-slate-950 bg-white text-center">
+                        <Icon name="file" className="h-10 w-10 text-blue-700" />
+                        <p className="mt-2 text-xs font-black uppercase tracking-widest text-slate-500">PDF Certificate</p>
+                        <p className="mt-1 px-3 text-sm font-black text-slate-950">{cert.credentialId || cert.issuer}</p>
+                      </div>
+                    </button>
                   ) : (
                     <div className="grid h-full place-items-center p-5">
                       <div className="grid h-full w-full place-items-center rounded-2xl border-2 border-slate-950 bg-white text-center">
                         <Icon name="file" className="h-10 w-10 text-blue-700" />
-                        <p className="mt-2 text-xs font-black uppercase tracking-widest text-slate-500">
-                          {isPdf ? 'PDF Certificate' : 'Verified Certificate'}
-                        </p>
+                        <p className="mt-2 text-xs font-black uppercase tracking-widest text-slate-500">Verified Certificate</p>
                         <p className="mt-1 px-3 text-sm font-black text-slate-950">{cert.credentialId || cert.issuer}</p>
                       </div>
                     </div>
