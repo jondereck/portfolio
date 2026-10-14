@@ -15,6 +15,72 @@ const sectionTitleStyles = 'text-sm font-semibold text-slate-900 dark:text-slate
 const sectionHintStyles = 'text-xs text-slate-500 dark:text-slate-400';
 const panelStyles = 'rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900';
 
+const SORT_OPTIONS = [
+  { value: 'issued-newest', label: 'Issued · newest' },
+  { value: 'issued-oldest', label: 'Issued · oldest' },
+  { value: 'added-newest', label: 'Added · newest' },
+  { value: 'added-oldest', label: 'Added · oldest' },
+  { value: 'title-asc', label: 'Title · A–Z' },
+  { value: 'title-desc', label: 'Title · Z–A' },
+  { value: 'issuer-asc', label: 'Issuer · A–Z' },
+  { value: 'category-asc', label: 'Category · A–Z' },
+];
+
+const toTime = (value) => {
+  const parsed = Date.parse(value ?? '');
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const compareText = (left, right) =>
+  String(left ?? '')
+    .trim()
+    .localeCompare(String(right ?? '').trim(), undefined, { sensitivity: 'base' });
+
+const sortCertificateList = (list, mode) => {
+  const next = Array.isArray(list) ? [...list] : [];
+
+  next.sort((left, right) => {
+    switch (mode) {
+      case 'issued-newest':
+      case 'issued-oldest': {
+        const leftIssued = toTime(left?.issuedAt);
+        const rightIssued = toTime(right?.issuedAt);
+        if (leftIssued !== null && rightIssued !== null && leftIssued !== rightIssued) {
+          return mode === 'issued-newest' ? rightIssued - leftIssued : leftIssued - rightIssued;
+        }
+        if (leftIssued !== null && rightIssued === null) return -1;
+        if (leftIssued === null && rightIssued !== null) return 1;
+        break;
+      }
+      case 'added-newest':
+      case 'added-oldest': {
+        const leftAdded = toTime(left?.createdAt) ?? toTime(left?.updatedAt);
+        const rightAdded = toTime(right?.createdAt) ?? toTime(right?.updatedAt);
+        if (leftAdded !== null && rightAdded !== null && leftAdded !== rightAdded) {
+          return mode === 'added-newest' ? rightAdded - leftAdded : leftAdded - rightAdded;
+        }
+        if (leftAdded !== null && rightAdded === null) return -1;
+        if (leftAdded === null && rightAdded !== null) return 1;
+        break;
+      }
+      case 'title-asc':
+        return compareText(left?.title, right?.title) || Number(left?.id ?? 0) - Number(right?.id ?? 0);
+      case 'title-desc':
+        return compareText(right?.title, left?.title) || Number(left?.id ?? 0) - Number(right?.id ?? 0);
+      case 'issuer-asc':
+        return compareText(left?.issuer, right?.issuer) || compareText(left?.title, right?.title);
+      case 'category-asc':
+        return compareText(left?.category, right?.category) || compareText(left?.title, right?.title);
+      default:
+        break;
+    }
+
+    return Number(left?.id ?? 0) - Number(right?.id ?? 0);
+  });
+
+  return next;
+};
+
 const buildBuckets = (items) => {
   const featured = [];
   const regular = [];
@@ -149,6 +215,7 @@ export default function PortfolioCertificatesArrangeTable({
   const [localRegular, setLocalRegular] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [orderSaving, setOrderSaving] = useState(false);
+  const [sortMode, setSortMode] = useState('issued-newest');
   const baselineRef = useRef({ featuredIds: [], regularIds: [] });
 
   const itemMap = useMemo(() => new Map((Array.isArray(items) ? items : []).map((item) => [item.id, item])), [items]);
@@ -243,6 +310,14 @@ export default function PortfolioCertificatesArrangeTable({
     }
   }, [featuredIds, regularIds, onRefresh]);
 
+  const applySort = useCallback(
+    (mode = sortMode) => {
+      setLocalFeatured((previous) => sortCertificateList(previous, mode));
+      setLocalRegular((previous) => sortCertificateList(previous, mode));
+    },
+    [sortMode],
+  );
+
   if (loading) {
     return <p className="text-sm text-slate-500">Loading certificates…</p>;
   }
@@ -254,14 +329,38 @@ export default function PortfolioCertificatesArrangeTable({
           <p className={sectionTitleStyles}>Arrange Certificates</p>
           <p className={sectionHintStyles}>Drag within a list to reorder, or drag across lists to toggle Featured.</p>
         </div>
-        <button
-          type="button"
-          className="h-8 rounded-md bg-slate-900 px-3 text-sm text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
-          disabled={!orderDirty || orderSaving || formSaving}
-          onClick={onSaveOrder}
-        >
-          {orderSaving ? 'Saving…' : 'Save order'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="sr-only">Sort certificates</span>
+            <select
+              value={sortMode}
+              onChange={(event) => setSortMode(event.target.value)}
+              className="h-8 rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="h-8 rounded-md border border-slate-200 px-3 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            disabled={orderSaving || formSaving || (localFeatured.length === 0 && localRegular.length === 0)}
+            onClick={() => applySort()}
+          >
+            Apply sort
+          </button>
+          <button
+            type="button"
+            className="h-8 rounded-md bg-slate-900 px-3 text-sm text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
+            disabled={!orderDirty || orderSaving || formSaving}
+            onClick={onSaveOrder}
+          >
+            {orderSaving ? 'Saving…' : 'Save order'}
+          </button>
+        </div>
       </div>
 
       <DndContext
