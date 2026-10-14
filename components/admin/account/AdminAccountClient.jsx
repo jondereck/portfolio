@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
+import AdminBusyButton from '@/components/admin/shared/AdminBusyButton';
 import FieldErrorText from '@/components/forms/FieldErrorText';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { clearFieldErrors, getFieldError, normalizeFormError, parseErrorResponse } from '@/lib/form-client';
@@ -328,9 +329,7 @@ export default function AdminAccountClient() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : 'Save account'}
-                </Button>
+                <AdminBusyButton type="submit" loading={saving} label="Save account" busyLabel="Saving…" />
                 {feedback ? <p className="text-sm text-emerald-600 dark:text-emerald-400">{feedback}</p> : null}
               </div>
             </form>

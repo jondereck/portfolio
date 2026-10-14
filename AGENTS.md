@@ -39,6 +39,7 @@ Admin surfaces under `/admin` must stay **mobile-first responsive** and **compac
 - Prefer shared tokens in `modules/system/admin/settingsShared.js` and components under `components/admin/shared/*` before one-off styles.
 - Avoid oversized `rounded-[28px]` admin cards and inventing new themes (no purple-on-white / cream-serif restyles).
 - **No instructional helper copy.** Do not add “tap to open”, “switch sections”, “swipe to…”, or similar how-to lines. Labels, titles, and status text only. Put longer guidance in an existing `AdminHint` if it is already required — never as visible subtitle chrome.
+- **CRUD busy feedback (required).** Every admin create / update / delete / save / reorder / refresh that awaits a request must show a **simple spinner beside the control** (not text-only “Saving…” / “Refreshing…” alone). Prefer shared `AdminBusyButton` (actions) and `AdminRefreshButton` (refresh). Disable the control while pending. Do not invent full-page loaders for routine CRUD.
 
 ### Responsive rules
 

@@ -2,7 +2,8 @@
 
 ## Status / decision (2026-10-14)
 
-- **Active:** Phase 1 only — **all new uploads** go to Neon Object Storage when `AWS_*` env vars are set.
+- **Active:** Phase 1 — **all new uploads** go to Neon Object Storage by default (`resolveActiveUploadProvider`). Missing `AWS_*` fails the upload instead of silently using Cloudinary.
+- **Emergency only:** `MEDIA_STORAGE_PROVIDER=cloudinary` re-enables Cloudinary for new uploads.
 - **Deferred:** Do **not** migrate or delete existing Cloudinary media for now. Legacy `res.cloudinary.com` URLs stay as-is and keep serving.
 - Phase 2 copy script remains in the repo if we revisit later; it is **not** part of the current rollout.
 

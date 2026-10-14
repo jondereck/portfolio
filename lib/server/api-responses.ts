@@ -48,6 +48,17 @@ export function toErrorResponse(error: unknown, fallbackMessage: string) {
     );
   }
 
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    return createFormErrorResponse(
+      {
+        error: 'The database client is out of date or the payload is invalid. Restart the dev server after running prisma generate / migrate.',
+        errorCode: 'PRISMA_VALIDATION_ERROR',
+        details: { message: error.message },
+      },
+      500,
+    );
+  }
+
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === 'P2002') {
       const target = Array.isArray(error.meta?.target) ? error.meta.target.map(String) : [];

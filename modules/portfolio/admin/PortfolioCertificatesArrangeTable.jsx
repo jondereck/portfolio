@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { handleRequest } from '@/lib/handleRequest';
 import { normalizeFormError } from '@/lib/form-client';
 import { notifyRealtimeUpdate, revalidatePublicData } from '@/lib/realtime';
+import AdminBusyButton from '@/components/admin/shared/AdminBusyButton';
 import AdminListPagination, { getPagedSlice } from '@/components/admin/shared/AdminListPagination';
 import DeleteDialog from '@/components/DeleteDialog';
 
@@ -382,14 +383,14 @@ export default function PortfolioCertificatesArrangeTable({
           >
             Apply sort
           </button>
-          <button
-            type="button"
-            className="h-8 rounded-md bg-slate-900 px-3 text-sm text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-900"
-            disabled={!orderDirty || orderSaving || formSaving}
+          <AdminBusyButton
+            className="h-8"
+            loading={orderSaving}
+            disabled={!orderDirty || formSaving}
             onClick={onSaveOrder}
-          >
-            {orderSaving ? 'Saving…' : 'Save order'}
-          </button>
+            label="Save order"
+            busyLabel="Saving…"
+          />
         </div>
       </div>
 

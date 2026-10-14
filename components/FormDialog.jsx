@@ -2,6 +2,7 @@
 
 import FieldErrorText from '@/components/forms/FieldErrorText';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
+import AdminBusyButton from '@/components/admin/shared/AdminBusyButton';
 import CertificateAssetUpload from '@/components/CertificateAssetUpload';
 import ImageUpload from '@/components/ImageUpload';
 
@@ -216,13 +217,12 @@ export default function FormDialog({
                 >
                   Cancel
                 </button>
-                <button
+                <AdminBusyButton
                   type="submit"
-                  disabled={saving}
-                  className="h-9 rounded-md bg-slate-900 px-3 text-sm font-medium text-white disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-                >
-                  {saving ? 'Saving…' : isEditing ? 'Update Entry' : 'Create Entry'}
-                </button>
+                  loading={saving}
+                  label={isEditing ? 'Update Entry' : 'Create Entry'}
+                  busyLabel="Saving…"
+                />
               </div>
             </form>
           </div>

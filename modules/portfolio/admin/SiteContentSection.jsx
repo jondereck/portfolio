@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/ImageUpload';
+import AdminBusyButton from '@/components/admin/shared/AdminBusyButton';
 import AdminSectionHeader from '@/components/admin/shared/AdminSectionHeader';
 import FieldErrorText from '@/components/forms/FieldErrorText';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { clearFieldErrors, getFieldError, normalizeFormError } from '@/lib/form-client';
 import { handleRequest } from '@/lib/handleRequest';
 import { notifyRealtimeUpdate, revalidatePublicData } from '@/lib/realtime';
-import { buttonStyles, cardStyles, contentPadStyles, fetcher, inputStyles, textareaStyles, withFieldError } from '@/modules/system/admin/settingsShared';
+import { cardStyles, contentPadStyles, fetcher, inputStyles, textareaStyles, withFieldError } from '@/modules/system/admin/settingsShared';
 import { cn } from '@/lib/utils';
 
 export default function SiteContentSection() {
@@ -309,9 +310,13 @@ export default function SiteContentSection() {
             </div>
           </div>
 
-          <button type="submit" disabled={saving || loading} className={buttonStyles}>
-            {saving ? 'Saving...' : 'Update Homepage Content'}
-          </button>
+          <AdminBusyButton
+            type="submit"
+            loading={saving}
+            disabled={loading}
+            label="Update Homepage Content"
+            busyLabel="Saving…"
+          />
         </form>
       </div>
     </section>

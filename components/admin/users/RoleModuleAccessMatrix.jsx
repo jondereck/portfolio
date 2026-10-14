@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import AdminBusyButton from '@/components/admin/shared/AdminBusyButton';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { normalizeFormError } from '@/lib/form-client';
 import { handleRequest } from '@/lib/handleRequest';
@@ -149,14 +150,14 @@ export default function RoleModuleAccessMatrix() {
           </p>
         </div>
 
-        <button
-          type="button"
+        <AdminBusyButton
+          className="h-10 px-4"
           onClick={save}
-          disabled={loading || saving}
-          className="h-10 rounded-md bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
-        >
-          {saving ? 'Saving...' : 'Save access'}
-        </button>
+          disabled={loading}
+          loading={saving}
+          label="Save access"
+          busyLabel="Saving…"
+        />
       </div>
 
       <div className="mt-5">

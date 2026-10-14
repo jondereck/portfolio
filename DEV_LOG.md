@@ -8,6 +8,9 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ## 2026-10-14
 
+- **Admin CRUD busy spinner rule** — AGENTS.md requires spinner beside create/update/delete/save/refresh controls; shared `AdminBusyButton` wired on FormDialog, cert/project Save order, account, role access, site content. `AGENTS.md`, `AdminBusyButton.jsx`, `FormDialog.jsx`.
+- **Certificate create “highlighted fields” false alarm** — FormErrorSummary only says “fix highlighted fields” when real `fieldErrors` exist; otherwise shows the server error. Prisma client regenerated (`isFeatured` was missing → silent 500 on create). `FormErrorSummary.jsx`, `api-responses.ts`.
+- **Neon storage env for local uploads** — Pulled Neon Object Storage endpoint/bucket (`public-assets`) and wired `AWS_*` + `MEDIA_STORAGE_PROVIDER=neon` into `.env.local`; uploads now resolve to Neon (smoke upload OK). Default provider no longer silent-falls back to Cloudinary. `lib/server/uploads.ts`, `docs/neon-object-storage.md`.
 - **Certificate upload drag-and-drop** — Add Certificate dropzone matches `ImageUpload` (drag enter/over/leave/drop + click), accepts image/PDF. `CertificateAssetUpload.jsx`.
 - **Admin cert/project list pagination** — Arrange tables for Certificates and Projects paginate Featured/Regular at 10 rows each (Prev / Page x/y / Next); full order still saved for drag-reorder. `AdminListPagination.jsx`, `PortfolioCertificatesArrangeTable.jsx`, `PortfolioProjectsArrangeTable.jsx`.
 - **Admin refresh spinner** — Replaced “Refreshing…” button text with shared `AdminRefreshButton` (idle label → spinner only while loading) on portfolio resources, Drive folder picker, and Unclothy status. `components/admin/shared/AdminRefreshButton.jsx`, `PortfolioResourceSection.jsx`, `GalleryDriveFolderPicker.jsx`, `GalleryUnclothySection.jsx`.
