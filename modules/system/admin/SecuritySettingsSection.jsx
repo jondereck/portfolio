@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
+import AdminHint from '@/components/admin/shared/AdminHint';
 import AdminSectionHeader from '@/components/admin/shared/AdminSectionHeader';
 import AdminStatusBadge from '@/components/admin/shared/AdminStatusBadge';
 import FieldErrorText from '@/components/forms/FieldErrorText';
@@ -28,6 +29,17 @@ const emptySecurity = {
   contactRateLimitMax: 8,
   contactRateLimitWindowSeconds: 60,
   sessionVersion: 1,
+};
+
+const SECURITY_FIELD_HINTS = {
+  sessionTtlHours:
+    'How long an admin stay signed in after Google, email, OTP, or legacy login. When it expires, admin pages require signing in again.',
+  loginRateLimitMax: 'Max failed login attempts allowed before temporary lockout.',
+  loginRateLimitWindowSeconds: 'Time window used to count failed login attempts.',
+  mutationRateLimitMax: 'Max admin create/update/delete actions allowed per window.',
+  mutationRateLimitWindowSeconds: 'Time window used to count admin write actions.',
+  contactRateLimitMax: 'Max public contact-form submissions allowed per window.',
+  contactRateLimitWindowSeconds: 'Time window used to count contact-form submissions.',
 };
 
 const numericField = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
@@ -136,7 +148,12 @@ export default function SecuritySettingsSection() {
       });
 
       await updatePromise;
-      window.location.href = '/';
+      try {
+        await fetch('/api/neon/session/sign-out', { method: 'POST', cache: 'no-store' });
+      } catch {
+        // Ignore — session version bump already blocks admin access.
+      }
+      window.location.href = '/admin/login';
     } catch (requestFailure) {
       const nextError = normalizeFormError(requestFailure, 'Unable to invalidate sessions');
       setFormError(nextError.formError);
@@ -169,7 +186,14 @@ export default function SecuritySettingsSection() {
               ['contactRateLimitWindowSeconds', 'Contact window (seconds)'],
             ].map(([field, label]) => (
               <label key={field} className="flex flex-col gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-                {label}
+                <span className="inline-flex items-center gap-1">
+                  {label}
+                  {SECURITY_FIELD_HINTS[field] ? (
+                    <AdminHint label={`${label} info`} title={label}>
+                      {SECURITY_FIELD_HINTS[field]}
+                    </AdminHint>
+                  ) : null}
+                </span>
                 <input
                   type="number"
                   min={1}
@@ -186,9 +210,14 @@ export default function SecuritySettingsSection() {
             ))}
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2 dark:border-slate-800 dark:bg-slate-950/40">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Force logout</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Force logout</p>
+                <AdminHint label="Force logout info" title="Force logout">
+                  Signs out every admin immediately (Google, email, OTP, and legacy), including this browser. Everyone must sign in again.
+                </AdminHint>
+              </div>
               <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                Bump the session version and invalidate every currently signed-in admin session, including this one.
+                Invalidate every currently signed-in admin session, including this one.
               </p>
               <button
                 type="button"

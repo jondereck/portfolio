@@ -34,6 +34,7 @@ const normalizeCertificatePayload = (data: Record<string, unknown>) => ({
   expiresAt: data.expiresAt === '' ? null : data.expiresAt,
   credentialId: normalizeOptionalText(data.credentialId),
   sortOrder: data.sortOrder,
+  isFeatured: data.isFeatured,
   isPublished: data.isPublished,
 });
 
@@ -101,6 +102,7 @@ export async function PUT(request: Request, context: RouteContext) {
         category: parsed.category,
         credentialId: parsed.credentialId ?? null,
         sortOrder: parsed.sortOrder ?? 0,
+        isFeatured: parsed.isFeatured ?? false,
         isPublished: parsed.isPublished ?? true,
         issuedAt: parsed.issuedAt ? new Date(parsed.issuedAt) : null,
         expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,

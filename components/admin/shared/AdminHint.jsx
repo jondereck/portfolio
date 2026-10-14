@@ -10,7 +10,7 @@ const TONE_ICONS = {
 };
 
 /**
- * Subtle click-to-reveal hint. Default is a small icon; click opens a compact popover.
+ * Subtle hint control. Default is a small icon; hover (desktop) or click (mobile) opens a compact popover.
  * Use variant="banner" only when a persistent callout is explicitly needed.
  */
 export default function AdminHint({
@@ -20,11 +20,31 @@ export default function AdminHint({
   className = '',
   variant = 'subtle',
   label = 'Show hint',
+  trigger = 'hover',
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const closeTimerRef = useRef(null);
   const panelId = useId();
   const Icon = TONE_ICONS[tone] || Info;
+  const hoverEnabled = trigger === 'hover' || trigger === 'both';
+
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const openHint = () => {
+    clearCloseTimer();
+    setOpen(true);
+  };
+
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => setOpen(false), 120);
+  };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -51,6 +71,8 @@ export default function AdminHint({
     };
   }, [open]);
 
+  useEffect(() => () => clearCloseTimer(), []);
+
   if (variant === 'banner') {
     return (
       <div
@@ -68,16 +90,23 @@ export default function AdminHint({
   }
 
   return (
-    <span ref={rootRef} className={`relative inline-flex align-middle ${className}`.trim()}>
+    <span
+      ref={rootRef}
+      className={`relative inline-flex align-middle ${className}`.trim()}
+      onMouseEnter={hoverEnabled ? openHint : undefined}
+      onMouseLeave={hoverEnabled ? scheduleClose : undefined}
+    >
       <button
         type="button"
         aria-label={label}
         aria-expanded={open}
         aria-controls={panelId}
-        className={`inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 ${
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 ${
           open ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' : ''
         }`}
         onClick={() => setOpen((value) => !value)}
+        onFocus={hoverEnabled ? openHint : undefined}
+        onBlur={hoverEnabled ? scheduleClose : undefined}
       >
         <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
@@ -87,6 +116,8 @@ export default function AdminHint({
           id={panelId}
           role="tooltip"
           className="absolute right-0 top-full z-30 mt-1.5 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs leading-5 text-slate-600 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:left-0 sm:right-auto"
+          onMouseEnter={hoverEnabled ? openHint : undefined}
+          onMouseLeave={hoverEnabled ? scheduleClose : undefined}
         >
           {title ? <span className="mb-1 block font-semibold text-slate-800 dark:text-slate-100">{title}</span> : null}
           <span className="block">{children}</span>

@@ -99,7 +99,8 @@ export default function AdminLoginPage() {
 
         setNeonConfigured(Boolean(payload.neonConfigured));
 
-        if (payload.authenticated) {
+        // Neon identity alone is not enough — adminAccess (Session TTL policy cookie) required.
+        if (payload.authenticated && payload.adminAccess) {
           const target = getStoredCallbackTarget(callbackUrl);
           setRedirecting(true);
           window.location.assign(target);

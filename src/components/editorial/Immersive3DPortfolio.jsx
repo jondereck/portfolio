@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { splitAboutHighlightPoints } from '@/lib/aboutHighlights';
-import { compareCertificatesByIssuedAtDesc, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
+import { compareCertificatesForDisplay, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
 import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { isSafeHttpUrl } from '@/lib/url-safety';
@@ -514,7 +514,7 @@ function CertificatesSection({ profileSlug }) {
   const { data, error } = useSWR(withProfile('/api/certificates', profileSlug), fetcher);
   const items = Array.isArray(data) ? data : [];
   const categories = useMemo(() => ['All', ...Array.from(new Set(items.map((item) => item.category).filter(Boolean)))], [items]);
-  const sortedItems = useMemo(() => [...items].sort(compareCertificatesByIssuedAtDesc), [items]);
+  const sortedItems = useMemo(() => [...items].sort(compareCertificatesForDisplay), [items]);
   const filteredItems = activeCategory === 'All' ? sortedItems : sortedItems.filter((item) => item.category === activeCategory);
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
   const pageItems = filteredItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);

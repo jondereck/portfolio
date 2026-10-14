@@ -5,6 +5,7 @@ import FormDialog from '@/components/FormDialog';
 import { useAdminData } from '@/hooks/useAdminData';
 import AdminSectionHeader from '@/components/admin/shared/AdminSectionHeader';
 import PortfolioProjectsArrangeTable from '@/modules/portfolio/admin/PortfolioProjectsArrangeTable';
+import PortfolioCertificatesArrangeTable from '@/modules/portfolio/admin/PortfolioCertificatesArrangeTable';
 import { cardStyles, contentPadStyles } from '@/modules/system/admin/settingsShared';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +72,7 @@ export default function PortfolioResourceSection({ resource }) {
     }
   };
 
-  const displayItems = ['certificates', 'portfolio', 'skills', 'experience'].includes(key) ? newestFirst(items) : items;
+  const displayItems = ['skills', 'experience'].includes(key) ? newestFirst(items) : items;
 
   return (
     <section className={cardStyles}>
@@ -119,6 +120,16 @@ export default function PortfolioResourceSection({ resource }) {
         {error ? <div className="mb-4 rounded bg-red-100 p-3 text-red-700">{error}</div> : null}
         {key === 'portfolio' ? (
           <PortfolioProjectsArrangeTable
+            items={items}
+            loading={loading}
+            saving={saving}
+            deletingId={deletingId}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            onRefresh={loadItems}
+          />
+        ) : key === 'certificates' ? (
+          <PortfolioCertificatesArrangeTable
             items={items}
             loading={loading}
             saving={saving}

@@ -39,29 +39,12 @@ export function toCloudinaryPdfPreviewUrl(assetUrl: string) {
   }
 }
 
-function toTimestamp(value: unknown) {
-  if (typeof value !== 'string' || !value.trim()) {
-    return null;
-  }
-
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : null;
-}
-
-export function compareCertificatesByIssuedAtDesc(left: any, right: any) {
-  const leftTimestamp = toTimestamp(left?.issuedAt);
-  const rightTimestamp = toTimestamp(right?.issuedAt);
-
-  if (leftTimestamp !== null && rightTimestamp !== null && leftTimestamp !== rightTimestamp) {
-    return rightTimestamp - leftTimestamp;
-  }
-
-  if (leftTimestamp !== null && rightTimestamp === null) {
-    return -1;
-  }
-
-  if (leftTimestamp === null && rightTimestamp !== null) {
-    return 1;
+/** Featured first, then manual sortOrder (admin arrange), then id. */
+export function compareCertificatesForDisplay(left: any, right: any) {
+  const leftFeatured = Boolean(left?.isFeatured);
+  const rightFeatured = Boolean(right?.isFeatured);
+  if (leftFeatured !== rightFeatured) {
+    return leftFeatured ? -1 : 1;
   }
 
   const leftOrder = Number.isFinite(Number(left?.sortOrder)) ? Number(left.sortOrder) : Number.MAX_SAFE_INTEGER;
@@ -72,4 +55,9 @@ export function compareCertificatesByIssuedAtDesc(left: any, right: any) {
   }
 
   return Number(left?.id ?? 0) - Number(right?.id ?? 0);
+}
+
+/** @deprecated Use compareCertificatesForDisplay — kept for older imports. */
+export function compareCertificatesByIssuedAtDesc(left: any, right: any) {
+  return compareCertificatesForDisplay(left, right);
 }

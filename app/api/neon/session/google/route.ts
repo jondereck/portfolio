@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getNeonAuth, getNeonAuthConfigError } from '@/lib/auth/neon-server';
 import { getNeonResultData, mapNeonAuthError } from '@/lib/auth/neon-route-helpers';
 import { normalizeProtectedPath } from '@/lib/auth/redirects';
+import { setAdminAccessGrantCookie } from '@/lib/server/admin-session';
 
 const googleSchema = z.object({
   callbackUrl: z.string().trim().optional(),
@@ -25,7 +26,10 @@ export async function POST(request: Request) {
 
   const origin = new URL(request.url).origin;
   const callbackPath = normalizeProtectedPath(parsed.data.callbackUrl, origin) ?? '/admin';
-  const callbackURL = new URL(callbackPath, origin).toString();
+  // Land on establish so Session TTL / Force Logout policy cookie is minted for Google.
+  const establishUrl = new URL('/api/neon/session/establish', origin);
+  establishUrl.searchParams.set('next', callbackPath);
+  const callbackURL = establishUrl.toString();
 
   try {
     // Use the Neon Auth proxy handler and forward Set-Cookie headers.
@@ -76,6 +80,7 @@ export async function POST(request: Request) {
     for (const setCookie of proxyResponse.headers.getSetCookie()) {
       outgoing.headers.append('set-cookie', setCookie);
     }
+    await setAdminAccessGrantCookie(outgoing);
     return outgoing;
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'google');

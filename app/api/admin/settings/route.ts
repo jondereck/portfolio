@@ -9,6 +9,8 @@ import {
 } from '@/lib/server/cloudflare-unclothy-worker';
 import { isRateLimited } from '@/lib/server/rate-limit';
 import { syncPrimaryProfileContactEmail } from '@/lib/profile/site-data';
+import { getNeonAuth } from '@/lib/auth/neon-server';
+import { clearAdminSessionCookie } from '@/lib/server/admin-session';
 import { integrationsSettingsSchema, securitySettingsSchema } from '@/lib/validators';
 import { createFormErrorResponse, createZodFormErrorResponse, mergeFieldErrors } from '@/lib/server/form-responses';
 import { formatZodFieldErrors } from '@/lib/server/request-parsing';
@@ -175,7 +177,21 @@ export async function PUT(request: Request) {
     }
 
     const data = await getAdminSettingsDashboardData();
-    return NextResponse.json(data);
+    const response = NextResponse.json(data);
+
+    if (forceSignOut) {
+      clearAdminSessionCookie(response);
+      const neonAuth = getNeonAuth();
+      if (neonAuth) {
+        try {
+          await neonAuth.signOut();
+        } catch {
+          // Policy cookie + sessionVersion already invalidate admin access.
+        }
+      }
+    }
+
+    return response;
   } catch (error) {
     console.error('Failed to update admin settings', error);
     if (error instanceof SyntaxError) {

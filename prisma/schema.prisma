@@ -62,6 +62,7 @@ model Certificate {
   expiresAt    DateTime?
   credentialId String?
   sortOrder    Int      @default(0)
+  isFeatured   Boolean  @default(false)
   isPublished  Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -70,6 +71,7 @@ model Certificate {
   @@index([profileId, category, sortOrder])
   @@index([category, sortOrder])
   @@index([isPublished])
+  @@index([isFeatured])
 }
 
 model Portfolio {

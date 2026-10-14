@@ -27,6 +27,7 @@ const normalizeCertificatePayload = (data: Record<string, unknown>) => ({
   expiresAt: data.expiresAt === '' ? null : data.expiresAt,
   credentialId: normalizeOptionalText(data.credentialId),
   sortOrder: data.sortOrder,
+  isFeatured: data.isFeatured,
   isPublished: data.isPublished,
 });
 
@@ -70,6 +71,19 @@ export async function POST(request: Request) {
     }
     const parsed = await buildCertificateInput(data, imageFile);
 
+    const hasExplicitSortOrder =
+      typeof data?.sortOrder !== 'undefined' && data?.sortOrder !== null && String(data.sortOrder).trim() !== '';
+    const nextSortOrder = hasExplicitSortOrder
+      ? (parsed.sortOrder ?? 0)
+      : await (async () => {
+          const min = await prisma.certificate.aggregate({
+            where: { profileId: profile.id },
+            _min: { sortOrder: true },
+          });
+          const currentMin = typeof min._min.sortOrder === 'number' ? min._min.sortOrder : 0;
+          return currentMin - 1;
+        })();
+
     const created = await prisma.certificate.create({
       data: {
         profileId: profile.id,
@@ -79,7 +93,8 @@ export async function POST(request: Request) {
         link: parsed.link,
         category: parsed.category,
         credentialId: parsed.credentialId ?? null,
-        sortOrder: parsed.sortOrder ?? 0,
+        sortOrder: nextSortOrder,
+        isFeatured: parsed.isFeatured ?? false,
         isPublished: parsed.isPublished ?? true,
         issuedAt: parsed.issuedAt ? new Date(parsed.issuedAt) : null,
         expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,
@@ -127,6 +142,7 @@ export async function PUT(request: Request) {
         category: parsed.category,
         credentialId: parsed.credentialId ?? null,
         sortOrder: parsed.sortOrder ?? 0,
+        isFeatured: parsed.isFeatured ?? false,
         isPublished: parsed.isPublished ?? true,
         issuedAt: parsed.issuedAt ? new Date(parsed.issuedAt) : null,
         expiresAt: parsed.expiresAt ? new Date(parsed.expiresAt) : null,

@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import FormErrorSummary from '@/components/forms/FormErrorSummary';
 import { splitAboutHighlightPoints } from '@/lib/aboutHighlights';
-import { compareCertificatesByIssuedAtDesc, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
+import { compareCertificatesForDisplay, isPdfAssetUrl, toCloudinaryPdfPreviewUrl } from '@/lib/certificates';
 import { normalizeFormError, parseErrorResponse } from '@/lib/form-client';
 import { defaultNavigation } from '@/lib/siteContentDefaults';
 import { isSafeHttpUrl } from '@/lib/url-safety';
@@ -1024,7 +1024,7 @@ function Certificates({ items, error }) {
   const [page, setPage] = useState(1);
   const [selectedCert, setSelectedCert] = useState(null);
   const itemsPerPage = isMdUp ? 6 : 3;
-  const sorted = useMemo(() => [...items].sort(compareCertificatesByIssuedAtDesc), [items]);
+  const sorted = useMemo(() => [...items].sort(compareCertificatesForDisplay), [items]);
   const displayItems = sorted;
   const categories = ['All', ...Array.from(new Set(displayItems.map((item) => item.category).filter(Boolean)))];
   const filtered = activeCategory === 'All' ? displayItems : displayItems.filter((item) => item.category === activeCategory);

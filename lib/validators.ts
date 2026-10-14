@@ -80,7 +80,13 @@ export const certificateSchema = z.object({
   expiresAt: z.string().datetime().optional().nullable(),
   credentialId: textField(1, 120).optional(),
   sortOrder: orderField(),
+  isFeatured: z.boolean().optional().default(false),
   isPublished: publishField(),
+});
+
+export const certificateReorderSchema = z.object({
+  featuredIds: z.array(z.number().int().positive()).default([]),
+  regularIds: z.array(z.number().int().positive()).default([]),
 });
 
 export const heroSchema = z.object({

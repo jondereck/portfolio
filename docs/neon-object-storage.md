@@ -1,14 +1,16 @@
 # Neon Object Storage (dual-provider)
 
-## Status
+## Status / decision (2026-10-14)
 
-- **Phase 1:** New uploads prefer Neon Object Storage when `AWS_*` env vars are set. Existing Cloudinary URLs keep working.
-- **Phase 2:** Optional copy job (`npm run storage:migrate-cloudinary`) after cost go/no-go. Does not delete Cloudinary assets.
+- **Active:** Phase 1 only — **all new uploads** go to Neon Object Storage when `AWS_*` env vars are set.
+- **Deferred:** Do **not** migrate or delete existing Cloudinary media for now. Legacy `res.cloudinary.com` URLs stay as-is and keep serving.
+- Phase 2 copy script remains in the repo if we revisit later; it is **not** part of the current rollout.
 
 ## Project
 
 - Neon project: `porfolio` (`dark-morning-42993355`)
 - Region: `aws-us-east-1` (Object Storage supported)
+- Bucket: `public-assets` (`public_read`)
 
 ## Provision bucket + credentials
 
@@ -26,16 +28,22 @@ Required env (also set on Vercel):
 - Optional: `NEON_OBJECT_STORAGE_BUCKET=public-assets`
 - Optional: `MEDIA_STORAGE_PROVIDER=neon` (force Neon; default auto-detects Neon when configured)
 
-## Cost check before Phase 2
+Keep Cloudinary env vars — still required for existing gallery/portfolio assets.
+
+## After Vercel env is set
+
+1. Redeploy production.
+2. Smoke-test: new gallery/admin upload → Neon URL; old Cloudinary item still loads.
+3. Do not run the migrate script unless the team explicitly reopens Phase 2.
+
+## Optional later (Phase 2 — not scheduled)
+
+Cost check and migrate tooling (dry-run first). Only use if we decide to leave Cloudinary entirely:
 
 ```bash
 npm run storage:cost-report
 # or GET /api/admin/storage/cost-report (authenticated admin)
-```
 
-## Phase 2 migrate (dry-run first)
-
-```bash
 npm run storage:migrate-cloudinary
 npm run storage:migrate-cloudinary -- --apply --limit=20
 ```

@@ -134,6 +134,7 @@ async function main() {
         link: 'https://aws.amazon.com/certification/',
         category: 'Cloud',
         sortOrder: 1,
+        isFeatured: true,
       },
       {
         profileId: profile.id,
@@ -143,6 +144,7 @@ async function main() {
         link: 'https://grow.google/certificates/',
         category: 'Design',
         sortOrder: 2,
+        isFeatured: false,
       },
     ],
   });

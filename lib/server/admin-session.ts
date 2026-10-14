@@ -1,8 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { getAdminSettings } from '@/lib/server/admin-settings';
 
-const ADMIN_SESSION_COOKIE = 'admin_session';
+export const ADMIN_SESSION_COOKIE = 'admin_session';
+export const ADMIN_ACCESS_GRANT_COOKIE = 'admin_access_grant';
+const ACCESS_GRANT_TTL_SECONDS = 10 * 60;
 
 const textEncoder = new TextEncoder();
 
@@ -96,14 +99,35 @@ export async function isValidAdminSessionToken(token: string): Promise<boolean> 
   }
 }
 
-export async function hasValidAdminSession(request: Request): Promise<boolean> {
-  const cookies = parseCookies(request);
-  const token = cookies[ADMIN_SESSION_COOKIE];
+async function readAdminSessionToken(request?: Request): Promise<string | null> {
+  if (request) {
+    const fromRequest = parseCookies(request)[ADMIN_SESSION_COOKIE];
+    if (typeof fromRequest === 'string' && fromRequest) {
+      return fromRequest;
+    }
+  }
+
+  try {
+    const jar = await cookies();
+    const value = jar.get(ADMIN_SESSION_COOKIE)?.value;
+    return typeof value === 'string' && value ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function hasValidAdminSession(request?: Request): Promise<boolean> {
+  const token = await readAdminSessionToken(request);
   if (!token) {
     return false;
   }
 
   return isValidAdminSessionToken(token);
+}
+
+/** Policy cookie used for Session TTL + Force Logout across legacy, Neon, and Google admin access. */
+export async function hasValidAdminAccessPolicy(request?: Request): Promise<boolean> {
+  return hasValidAdminSession(request);
 }
 
 export async function setAdminSessionCookie(response: NextResponse, token: string) {
@@ -115,7 +139,7 @@ export async function setAdminSessionCookie(response: NextResponse, token: strin
     value: token,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     maxAge: sessionTtlSeconds,
   });
@@ -127,8 +151,108 @@ export function clearAdminSessionCookie(response: NextResponse) {
     value: '',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
     maxAge: 0,
   });
+}
+
+export async function issueAdminAccessCookie(response: NextResponse): Promise<boolean> {
+  const token = await createAdminSessionToken();
+  if (!token) {
+    return false;
+  }
+
+  await setAdminSessionCookie(response, token);
+  return true;
+}
+
+export async function createAdminAccessGrantToken(): Promise<string | null> {
+  const secret = getSessionSecret();
+  if (!secret) {
+    return null;
+  }
+
+  const settings = await getAdminSettings();
+  const payload = base64UrlEncode(
+    JSON.stringify({
+      exp: Math.floor(Date.now() / 1000) + ACCESS_GRANT_TTL_SECONDS,
+      v: settings.security.sessionVersion,
+      purpose: 'admin-access-grant',
+    }),
+  );
+  return `${payload}.${signPayload(payload, secret)}`;
+}
+
+export async function isValidAdminAccessGrantToken(token: string): Promise<boolean> {
+  const secret = getSessionSecret();
+  if (!secret || !token) {
+    return false;
+  }
+
+  const [payload, signature] = token.split('.');
+  if (!payload || !signature) {
+    return false;
+  }
+
+  const expectedSignature = signPayload(payload, secret);
+  if (!safeEqual(signature, expectedSignature)) {
+    return false;
+  }
+
+  try {
+    const decoded = JSON.parse(base64UrlDecode(payload)) as { exp?: number; v?: number; purpose?: string };
+    if (decoded.purpose !== 'admin-access-grant' || typeof decoded.exp !== 'number') {
+      return false;
+    }
+    if (decoded.exp <= Math.floor(Date.now() / 1000)) {
+      return false;
+    }
+
+    const settings = await getAdminSettings();
+    const tokenVersion = typeof decoded.v === 'number' ? decoded.v : 1;
+    return tokenVersion === settings.security.sessionVersion;
+  } catch {
+    return false;
+  }
+}
+
+export async function setAdminAccessGrantCookie(response: NextResponse): Promise<boolean> {
+  const token = await createAdminAccessGrantToken();
+  if (!token) {
+    return false;
+  }
+
+  response.cookies.set({
+    name: ADMIN_ACCESS_GRANT_COOKIE,
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: ACCESS_GRANT_TTL_SECONDS,
+  });
+  return true;
+}
+
+export function clearAdminAccessGrantCookie(response: NextResponse) {
+  response.cookies.set({
+    name: ADMIN_ACCESS_GRANT_COOKIE,
+    value: '',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
+}
+
+export async function consumeAdminAccessGrant(request: Request, response: NextResponse): Promise<boolean> {
+  const grant = parseCookies(request)[ADMIN_ACCESS_GRANT_COOKIE];
+  clearAdminAccessGrantCookie(response);
+  if (!grant || !(await isValidAdminAccessGrantToken(grant))) {
+    return false;
+  }
+
+  return issueAdminAccessCookie(response);
 }

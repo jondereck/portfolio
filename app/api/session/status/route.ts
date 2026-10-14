@@ -7,6 +7,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       authenticated: status.authenticated,
+      adminAccess: Boolean(status.adminAccess),
       userId: status.authenticated && status.user?.id ? status.user.id : null,
       errorCode: status.errorCode,
       neonConfigured: status.neonConfigured,
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         authenticated: false,
+        adminAccess: false,
         userId: null,
         errorCode: 'AUTH_STATUS_FAILED',
         neonConfigured: false,

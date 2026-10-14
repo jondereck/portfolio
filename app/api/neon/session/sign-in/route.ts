@@ -4,6 +4,7 @@ import { getNeonAuth, getNeonAuthConfigError } from '@/lib/auth/neon-server';
 import { migrateLocalPasswordToNeonAuth } from '@/lib/auth/neon-password-sync';
 import { mapNeonAuthError, resolveNeonSignInEmail } from '@/lib/auth/neon-route-helpers';
 import { normalizeProtectedPath } from '@/lib/auth/redirects';
+import { issueAdminAccessCookie } from '@/lib/server/admin-session';
 
 const signInSchema = z.object({
   callbackUrl: z.string().trim().optional(),
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
 
     const outgoing = NextResponse.json({ ok: true, redirectTo });
     copyNeonAuthHeaders(proxyResponse, outgoing);
+    await issueAdminAccessCookie(outgoing);
     return outgoing;
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'sign-in');

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getNeonAuth, getNeonAuthConfigError } from '@/lib/auth/neon-server';
 import { mapNeonAuthError, normalizeEmail, normalizeOtp } from '@/lib/auth/neon-route-helpers';
 import { normalizeProtectedPath } from '@/lib/auth/redirects';
+import { issueAdminAccessCookie } from '@/lib/server/admin-session';
 
 const verifyCodeSchema = z.object({
   callbackUrl: z.string().trim().optional(),
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     for (const setCookie of proxyResponse.headers.getSetCookie()) {
       outgoing.headers.append('set-cookie', setCookie);
     }
+    await issueAdminAccessCookie(outgoing);
     return outgoing;
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'verify-code');

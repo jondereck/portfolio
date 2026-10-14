@@ -1,5 +1,6 @@
 import { ensurePrimaryProfile, getProfileBySlug } from '@/lib/profile/profile';
 import { resolveRequestActor, canAccessProfile, resolveTargetProfile } from '@/lib/auth/session';
+import { hasValidAdminAccessPolicy } from '@/lib/server/admin-session';
 
 export async function resolvePublicProfileFromRequest(request: Request) {
   const url = new URL(request.url);
@@ -10,7 +11,9 @@ export async function resolvePublicProfileFromRequest(request: Request) {
   }
 
   const actor = await resolveRequestActor(request);
-  const canViewDrafts = Boolean(actor && canAccessProfile(actor, profile.id));
+  const hasAdminAccess =
+    actor?.source === 'legacy' ? true : actor ? await hasValidAdminAccessPolicy(request) : false;
+  const canViewDrafts = Boolean(actor && hasAdminAccess && canAccessProfile(actor, profile.id));
 
   return {
     actor,

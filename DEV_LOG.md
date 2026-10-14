@@ -8,7 +8,10 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ## 2026-10-14
 
+- **Security Session TTL for Google/Neon** — Session TTL + Force Logout now apply to Google/email/OTP admin logins via shared `admin_session` policy cookie (minted on sign-in / OTP / Google establish grant). Admin pages/APIs require it; login redirect checks `adminAccess`. Hover `?` hints on Security settings fields. `lib/server/admin-session.ts`, `lib/auth/session.ts`, `app/api/neon/session/*`, `SecuritySettingsSection.jsx`, `AdminHint.jsx`.
+- **Certificates arrange (Featured/Regular)** — Certificates Administration now mirrors Projects: drag reorder across Featured/Regular, Save order, `isFeatured` + `sortOrder` persisted via `/api/certificates/reorder`. Public classic theme shows Featured on top; all themes sort featured → sortOrder. `PortfolioCertificatesArrangeTable.jsx`, `app/api/certificates/reorder/route.ts`, `prisma/schema.prisma`, `lib/certificates.ts`, `Certificates.jsx`.
 - **Neon Object Storage (dual-provider)** — New uploads prefer Neon `public-assets` when `AWS_*` is set; existing Cloudinary gallery URLs stay as-is. Added adapter, presign route, ImageUpload via `/api/upload`, schema `storageProvider`/`storageKey`, cost report + Cloudinary→Neon migrate dry-run script. Provisioned bucket on portfolio production (`aws-us-east-1`). `lib/server/object-storage.ts`, `lib/server/uploads.ts`, `neon.ts`, `docs/neon-object-storage.md`.
+- **Storage decision noted** — Phase 2 Cloudinary→Neon migrate deferred: keep legacy Cloudinary media; only new uploads go to Neon. Documented in `docs/neon-object-storage.md`.
 - **PWA Quick Access once/day** — Mobile install popup dismisses for the calendar day (`localStorage`); permanently hidden after install / standalone. `PwaInstallPrompt.jsx`.
 - **About deck swipe-down only** — Highlight stack advances on swipe down only (no swipe up); idle nudge matches down arrow. `MinimalistEditorialPortfolio.jsx`.
 

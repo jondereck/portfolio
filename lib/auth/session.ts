@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { hasValidAdminSession } from '@/lib/server/admin-session';
+import { hasValidAdminAccessPolicy, hasValidAdminSession } from '@/lib/server/admin-session';
 import { prisma } from '@/lib/prisma';
 import { LEGACY_PRIMARY_USER_ID } from '@/lib/auth/constants';
 import { isNeonAuthConfigured } from '@/lib/auth/neon-server';
@@ -15,6 +15,14 @@ export type AuthenticatedActor = {
   profile: Profile | null;
   source: 'authjs' | 'legacy' | 'neon';
 };
+
+async function actorHasAdminAccessPolicy(actor: AuthenticatedActor, request?: Request) {
+  if (actor.source === 'legacy') {
+    return true;
+  }
+
+  return hasValidAdminAccessPolicy(request);
+}
 
 async function getCurrentAuthJsUser() {
   const session = await auth();
@@ -61,8 +69,11 @@ export async function getCurrentAuthStatus(request?: Request) {
     try {
       const neonUser = await syncNeonSessionToLocalUser();
       if (neonUser) {
+        const adminAccess =
+          neonUser.state === 'active' ? await hasValidAdminAccessPolicy(request) : false;
         return {
           authenticated: neonUser.state === 'active',
+          adminAccess,
           errorCode: null,
           neonConfigured: true,
           source: 'neon' as const,
@@ -74,6 +85,7 @@ export async function getCurrentAuthStatus(request?: Request) {
       if (error instanceof Error && error.message === 'NEON_AUTH_LINK_CONFLICT') {
         return {
           authenticated: false,
+          adminAccess: false,
           errorCode: 'NEON_AUTH_LINK_CONFLICT',
           neonConfigured: true,
           source: 'neon' as const,
@@ -86,6 +98,7 @@ export async function getCurrentAuthStatus(request?: Request) {
       console.error('[auth] Failed to sync Neon session to local user', error);
       return {
         authenticated: false,
+        adminAccess: false,
         errorCode: 'NEON_SYNC_FAILED',
         neonConfigured: true,
         source: 'neon' as const,
@@ -97,8 +110,10 @@ export async function getCurrentAuthStatus(request?: Request) {
 
   const authJsUser = await getCurrentAuthJsUser();
   if (authJsUser?.isActive) {
+    const adminAccess = await hasValidAdminAccessPolicy(request);
     return {
       authenticated: true,
+      adminAccess,
       errorCode: null,
       neonConfigured: isNeonAuthConfigured(),
       source: 'authjs' as const,
@@ -116,6 +131,7 @@ export async function getCurrentAuthStatus(request?: Request) {
     if (legacyUser) {
       return {
         authenticated: true,
+        adminAccess: true,
         errorCode: null,
         neonConfigured: isNeonAuthConfigured(),
         source: 'legacy' as const,
@@ -127,6 +143,7 @@ export async function getCurrentAuthStatus(request?: Request) {
 
   return {
     authenticated: false,
+    adminAccess: false,
     errorCode: null,
     neonConfigured: isNeonAuthConfigured(),
     source: null,
@@ -177,6 +194,10 @@ export async function requireAuthActor(request?: Request) {
     throw new Error('UNAUTHENTICATED');
   }
 
+  if (!(await actorHasAdminAccessPolicy(actor, request))) {
+    throw new Error('UNAUTHENTICATED');
+  }
+
   return actor;
 }
 
@@ -204,7 +225,7 @@ export async function requireModuleAccess(
 
 export async function requirePageRole(allowedRoles: UserRole[], loginPath = '/admin/login') {
   const actor = await resolveRequestActor();
-  if (!actor) {
+  if (!actor || !(await actorHasAdminAccessPolicy(actor))) {
     redirect(loginPath);
   }
   if (!hasRequiredRole(actor.user.role, allowedRoles)) {
@@ -220,7 +241,7 @@ export async function requirePageModuleAccess(
   loginPath = '/admin/login',
 ) {
   const actor = await resolveRequestActor();
-  if (!actor) {
+  if (!actor || !(await actorHasAdminAccessPolicy(actor))) {
     redirect(loginPath);
   }
   if (!(await canAccessAdminModuleAction(actor.user.role, moduleId, action))) {
