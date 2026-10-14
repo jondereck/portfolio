@@ -1,6 +1,13 @@
 import { createHash } from 'node:crypto';
 import { v2 as cloudinary } from 'cloudinary';
 import { getCloudinaryFolderPath } from '@/lib/server/admin-settings';
+import {
+  isObjectStorageConfigured,
+  STORAGE_PROVIDER_CLOUDINARY,
+  STORAGE_PROVIDER_NEON,
+  uploadObjectBuffer,
+  type StorageProvider,
+} from '@/lib/server/object-storage';
 
 export const MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_VIDEO_FILE_SIZE = 120 * 1024 * 1024;
@@ -205,7 +212,7 @@ const configureCloudinary = () => {
   });
 };
 
-async function resolveCloudinaryFolder(folder: string) {
+async function resolveUploadFolder(folder: string) {
   const normalized = folder.trim().replace(/^\/+|\/+$/g, '');
 
   if (!normalized) {
@@ -221,6 +228,37 @@ async function resolveCloudinaryFolder(folder: string) {
   }
 
   return normalized;
+}
+
+/** Prefer Neon Object Storage when configured; keep Cloudinary for legacy fallback. */
+export function resolveActiveUploadProvider(): StorageProvider {
+  const forced = (process.env.MEDIA_STORAGE_PROVIDER || '').trim().toLowerCase();
+  if (forced === STORAGE_PROVIDER_NEON) {
+    if (!isObjectStorageConfigured()) {
+      throw new RequestValidationError(
+        'MEDIA_STORAGE_PROVIDER=neon but Neon Object Storage env vars are missing.',
+        500,
+        undefined,
+        'OBJECT_STORAGE_NOT_CONFIGURED',
+      );
+    }
+    return STORAGE_PROVIDER_NEON;
+  }
+  if (forced === STORAGE_PROVIDER_CLOUDINARY) {
+    return STORAGE_PROVIDER_CLOUDINARY;
+  }
+  if (isObjectStorageConfigured()) {
+    return STORAGE_PROVIDER_NEON;
+  }
+  return STORAGE_PROVIDER_CLOUDINARY;
+}
+
+function mimeLooksLikeVideo(mimeType: string) {
+  return mimeType.toLowerCase().startsWith('video/');
+}
+
+function mimeLooksLikeAudio(mimeType: string) {
+  return mimeType.toLowerCase().startsWith('audio/');
 }
 
 function isSupportedImageBuffer(buffer: Buffer): boolean {
@@ -281,8 +319,7 @@ function isSupportedPdfBuffer(buffer: Buffer): boolean {
 
 export async function uploadImageFile(file: File, folder: string) {
   validateImageFile(file);
-  configureCloudinary();
-  const resolvedFolder = await resolveCloudinaryFolder(folder);
+  const resolvedFolder = await resolveUploadFolder(folder);
 
   const buffer = Buffer.from(await file.arrayBuffer());
   if (!isSupportedImageBuffer(buffer)) {
@@ -290,6 +327,18 @@ export async function uploadImageFile(file: File, folder: string) {
       imageFile: ['Invalid image content.'],
     }, 'INVALID_IMAGE_CONTENT');
   }
+
+  if (resolveActiveUploadProvider() === STORAGE_PROVIDER_NEON) {
+    const uploaded = await uploadObjectBuffer({
+      body: buffer,
+      folder: resolvedFolder,
+      contentType: file.type || 'image/jpeg',
+      filename: file.name,
+    });
+    return uploaded.publicUrl;
+  }
+
+  configureCloudinary();
   let result;
   try {
     result = await new Promise<{ secure_url?: string }>((resolve, reject) => {
@@ -322,8 +371,7 @@ export async function uploadImageFile(file: File, folder: string) {
 
 export async function uploadCertificateAssetFile(file: File, folder: string) {
   validateCertificateAssetFile(file);
-  configureCloudinary();
-  const resolvedFolder = await resolveCloudinaryFolder(folder);
+  const resolvedFolder = await resolveUploadFolder(folder);
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const normalizedType = (file.type || '').toLowerCase();
@@ -349,6 +397,26 @@ export async function uploadCertificateAssetFile(file: File, folder: string) {
     );
   }
 
+  if (resolveActiveUploadProvider() === STORAGE_PROVIDER_NEON) {
+    const uploaded = await uploadObjectBuffer({
+      body: buffer,
+      folder: resolvedFolder,
+      contentType: file.type || (isPdf ? 'application/pdf' : 'application/octet-stream'),
+      filename: file.name,
+    });
+
+    return {
+      secureUrl: uploaded.publicUrl,
+      publicId: undefined as string | undefined,
+      resourceType: isPdf ? ('raw' as const) : ('image' as const),
+      format: extension || undefined,
+      originalFilename: file.name,
+      storageProvider: STORAGE_PROVIDER_NEON as StorageProvider,
+      storageKey: uploaded.storageKey,
+    };
+  }
+
+  configureCloudinary();
   let result;
   try {
     result = await new Promise<{
@@ -388,6 +456,8 @@ export async function uploadCertificateAssetFile(file: File, folder: string) {
     resourceType: result.resource_type && result.resource_type !== 'auto' ? result.resource_type : 'raw',
     format: result.format,
     originalFilename: result.original_filename,
+    storageProvider: STORAGE_PROVIDER_CLOUDINARY as StorageProvider,
+    storageKey: result.public_id,
   };
 }
 
@@ -419,8 +489,50 @@ export async function prepareMediaUpload(file: File): Promise<PreparedMediaUploa
 }
 
 export async function uploadPreparedMediaFile(prepared: PreparedMediaUpload, folder: string) {
+  const resolvedFolder = await resolveUploadFolder(folder);
+
+  if (resolveActiveUploadProvider() === STORAGE_PROVIDER_NEON) {
+    const uploaded = await uploadObjectBuffer({
+      body: prepared.buffer,
+      folder: resolvedFolder,
+      contentType: prepared.mimeType || 'application/octet-stream',
+      filename: prepared.originalFilename,
+    });
+
+    const resourceType = mimeLooksLikeVideo(prepared.mimeType)
+      ? 'video'
+      : mimeLooksLikeAudio(prepared.mimeType)
+        ? 'video'
+        : prepared.mimeType.startsWith('image/')
+          ? 'image'
+          : 'raw';
+
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.info('[media upload]', {
+        provider: STORAGE_PROVIDER_NEON,
+        name: prepared.originalFilename,
+        mime: prepared.mimeType,
+        size: prepared.fileSizeBytes,
+        storageKey: uploaded.storageKey,
+        publicUrl: uploaded.publicUrl,
+      });
+    }
+
+    return {
+      secureUrl: uploaded.publicUrl,
+      playbackUrl: uploaded.publicUrl,
+      publicId: undefined as string | undefined,
+      resourceType: resourceType as 'image' | 'video' | 'raw',
+      format: prepared.originalFilename.split('.').pop()?.toLowerCase(),
+      bytes: uploaded.bytes,
+      originalFilename: prepared.originalFilename,
+      storageProvider: STORAGE_PROVIDER_NEON as StorageProvider,
+      storageKey: uploaded.storageKey,
+    };
+  }
+
   configureCloudinary();
-  const resolvedFolder = await resolveCloudinaryFolder(folder);
 
   let result;
   try {
@@ -471,6 +583,7 @@ export async function uploadPreparedMediaFile(prepared: PreparedMediaUpload, fol
   if (process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
     console.info('[gallery upload]', {
+      provider: STORAGE_PROVIDER_CLOUDINARY,
       name: prepared.originalFilename,
       mime: prepared.mimeType,
       size: prepared.fileSizeBytes,
@@ -490,6 +603,8 @@ export async function uploadPreparedMediaFile(prepared: PreparedMediaUpload, fol
     format: result.format,
     bytes: result.bytes,
     originalFilename: result.original_filename,
+    storageProvider: STORAGE_PROVIDER_CLOUDINARY as StorageProvider,
+    storageKey: result.public_id,
   };
 }
 

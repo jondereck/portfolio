@@ -126,42 +126,13 @@ async function sha256Hex(file) {
     .join('');
 }
 
-function buildCloudinaryPlaybackUrl({ cloudName, publicId, resourceType, secureUrl, mimeType }) {
-  const isAudio = typeof mimeType === 'string' && mimeType.toLowerCase().startsWith('audio/');
-  if (resourceType !== 'video' || !cloudName || !publicId || isAudio) {
-    return secureUrl;
-  }
-
-  return `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto,vc_h264,ac_aac/${publicId}.mp4`;
-}
-
-function uploadDirectToCloudinary(file, { folder, onProgress, signal } = {}) {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-  if (!cloudName || !uploadPreset) {
-    throw toRequestError(
-      {
-        error: 'Direct media upload is not configured.',
-        errorCode: DIRECT_UPLOAD_NOT_AVAILABLE,
-      },
-      'Direct media upload is not configured.',
-      500,
-    );
-  }
-
+function putFileWithProgress(url, file, { contentType, onProgress, signal } = {}) {
   return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', uploadPreset);
-    formData.append('resource_type', 'auto');
-    if (folder) {
-      formData.append('folder', folder);
-    }
-
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`);
-    xhr.responseType = 'json';
+    xhr.open('PUT', url);
+    if (contentType) {
+      xhr.setRequestHeader('Content-Type', contentType);
+    }
 
     const abortError = () => Object.assign(new Error('Upload cancelled.'), { name: 'AbortError' });
     const onAbort = () => {
@@ -191,21 +162,16 @@ function uploadDirectToCloudinary(file, { folder, onProgress, signal } = {}) {
 
     xhr.onload = () => {
       signal?.removeEventListener('abort', onAbort);
-      const payload = xhr.response ?? {};
-      if (xhr.status >= 200 && xhr.status < 300 && payload.secure_url) {
-        resolve(payload);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(true);
         return;
       }
 
       reject(
         toRequestError(
           {
-            error:
-              payload?.error?.message ||
-              payload?.message ||
-              'Direct media upload failed.',
-            errorCode: payload?.error?.http_code ? `CLOUDINARY_${payload.error.http_code}` : 'DIRECT_UPLOAD_FAILED',
-            details: payload,
+            error: 'Direct media upload failed.',
+            errorCode: 'DIRECT_UPLOAD_FAILED',
           },
           'Direct media upload failed.',
           xhr.status || 500,
@@ -223,12 +189,65 @@ function uploadDirectToCloudinary(file, { folder, onProgress, signal } = {}) {
       reject(abortError());
     };
 
-    xhr.send(formData);
+    xhr.send(file);
   });
 }
 
+async function uploadDirectToNeon(file, { folder, onProgress, signal } = {}) {
+  let presign;
+  try {
+    presign = await fetchJson('/api/upload/presign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        folder,
+      }),
+    });
+  } catch (error) {
+    if (
+      error?.errorCode === 'OBJECT_STORAGE_NOT_CONFIGURED' ||
+      error?.status === 500
+    ) {
+      throw toRequestError(
+        {
+          error: 'Direct media upload is not configured.',
+          errorCode: DIRECT_UPLOAD_NOT_AVAILABLE,
+        },
+        'Direct media upload is not configured.',
+        500,
+      );
+    }
+    throw error;
+  }
+
+  if (!presign?.uploadUrl || !presign?.publicUrl || !presign?.storageKey) {
+    throw toRequestError(
+      {
+        error: 'Direct media upload is not configured.',
+        errorCode: DIRECT_UPLOAD_NOT_AVAILABLE,
+      },
+      'Direct media upload is not configured.',
+      500,
+    );
+  }
+
+  await putFileWithProgress(presign.uploadUrl, file, {
+    contentType: file.type || presign.contentType || 'application/octet-stream',
+    onProgress,
+    signal,
+  });
+
+  return {
+    provider: 'neon',
+    storageKey: presign.storageKey,
+    publicUrl: presign.publicUrl,
+  };
+}
+
 async function saveUploadedAlbumPhoto({ albumId, file, uploaded, signal }) {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const contentHash = await sha256Hex(file);
 
   return fetchJson(`/api/gallery/albums/${albumId}/photos`, {
@@ -236,15 +255,10 @@ async function saveUploadedAlbumPhoto({ albumId, file, uploaded, signal }) {
     headers: { 'Content-Type': 'application/json' },
     signal,
     body: JSON.stringify({
-      imageUrl: buildCloudinaryPlaybackUrl({
-        cloudName,
-        publicId: uploaded.public_id,
-        resourceType: uploaded.resource_type,
-        secureUrl: uploaded.secure_url,
-        mimeType: file.type,
-      }),
+      imageUrl: uploaded.publicUrl,
       caption: file.name,
-      cloudinaryPublicId: typeof uploaded.public_id === 'string' ? uploaded.public_id : undefined,
+      storageProvider: uploaded.provider || 'neon',
+      storageKey: uploaded.storageKey,
       contentHash,
       originalFilename: file.name,
       mimeType: file.type || undefined,
@@ -256,7 +270,7 @@ async function saveUploadedAlbumPhoto({ albumId, file, uploaded, signal }) {
 
 async function uploadAlbumFileDirect({ albumId, file, onProgress, signal }) {
   validateMediaFile(file);
-  const uploaded = await uploadDirectToCloudinary(file, {
+  const uploaded = await uploadDirectToNeon(file, {
     folder: `portfolio/gallery/${albumId}`,
     onProgress,
     signal,

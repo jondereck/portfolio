@@ -353,6 +353,8 @@ model AlbumPhoto {
   albumId          Int
   imageUrl         String
   cloudinaryPublicId String?
+  storageProvider  String?
+  storageKey       String?
   contentHash      String?
   originalFilename String?
   mimeType         String?

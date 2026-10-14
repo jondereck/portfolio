@@ -44,10 +44,12 @@ export const albumUpdateSchema = albumCreateSchema.partial().extend({
 });
 
 export const photoCreateSchema = z.object({
-  imageUrl: z.string().trim().url().max(700),
+  imageUrl: z.string().trim().url().max(1200),
   caption: z.string().trim().max(500).optional(),
   dateTaken: z.string().datetime().optional(),
   cloudinaryPublicId: z.string().trim().max(300).optional(),
+  storageProvider: z.enum(['neon', 'cloudinary']).optional(),
+  storageKey: z.string().trim().max(500).optional(),
   contentHash: z.string().trim().length(64).optional(),
   originalFilename: z.string().trim().max(300).optional(),
   mimeType: z.string().trim().max(120).optional(),

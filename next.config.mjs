@@ -36,6 +36,8 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: '*.aws.neon.tech' },
+      { protocol: 'https', hostname: '*.neon.tech' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'cdn.dribbble.com' },
       { protocol: 'https', hostname: 'i.imgur.com' },

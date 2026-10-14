@@ -41,6 +41,8 @@ export async function POST(request: Request) {
       format: uploaded.format,
       bytes: uploaded.bytes,
       original_filename: uploaded.originalFilename,
+      storage_provider: uploaded.storageProvider,
+      storage_key: uploaded.storageKey,
     });
   } catch (error) {
     const authError = toAuthErrorResponse(error);

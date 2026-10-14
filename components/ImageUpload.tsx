@@ -1,16 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { CldUploadWidget } from 'next-cloudinary';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { fetcher } from '@/modules/system/admin/settingsShared';
-
-type UploadResult = {
-  info?: {
-    secure_url?: string;
-  };
-};
 
 type ImageUploadProps = {
   id?: string;
@@ -20,8 +12,11 @@ type ImageUploadProps = {
   className?: string;
   cropAspectRatio?: number;
 };
+
 const dropzoneBaseStyles =
   'group flex min-h-32 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm transition dark:border-slate-700 dark:bg-slate-950';
+
+const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 
 export default function ImageUpload({
   id = 'image-upload',
@@ -29,38 +24,13 @@ export default function ImageUpload({
   value,
   onChange,
   className,
-  cropAspectRatio,
 }: ImageUploadProps) {
   const [uploadError, setUploadError] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const uploadToastIdRef = useRef<string | number | null>(null);
-  const isUploadingRef = useRef(false);
-  const openWidgetRef = useRef<(() => void) | null>(null);
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
   const previewUrl = typeof value === 'string' ? value.trim() : '';
-  const [folder, setFolder] = useState('portfolio');
-
-  useEffect(() => {
-    let active = true;
-
-    fetcher('/api/admin/settings')
-      .then((data) => {
-        if (!active) {
-          return;
-        }
-
-        const nextFolder = data?.settings?.integrations?.cloudinaryFolder;
-        if (typeof nextFolder === 'string' && nextFolder.trim()) {
-          setFolder(nextFolder.trim());
-        }
-      })
-      .catch(() => null);
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const dismissUploadToast = () => {
     if (uploadToastIdRef.current !== null) {
@@ -69,171 +39,153 @@ export default function ImageUpload({
     }
   };
 
-  const startUploadToast = () => {
-    if (isUploadingRef.current) {
+  const uploadFile = async (file: File) => {
+    if (!ALLOWED_TYPES.has(file.type)) {
+      setUploadError('Use PNG, JPG, WEBP, or GIF.');
+      toast.error('Unsupported image type');
       return;
     }
+
+    setUploadError('');
+    setIsUploading(true);
     dismissUploadToast();
     uploadToastIdRef.current = toast.loading('Uploading image...');
-    isUploadingRef.current = true;
-  };
 
-  const finishUploadToast = () => {
-    dismissUploadToast();
-    isUploadingRef.current = false;
-  };
-
-  const openWidget = () => {
-    if (!uploadPreset) {
-      setUploadError('Missing NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.');
-      return;
-    }
-    if (!cloudName) {
-      setUploadError('Missing NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME.');
-      return;
-    }
-    setUploadError('');
-    openWidgetRef.current?.();
-  };
-
-  const widgetOptions: any = {
-    cropping: true,
-    croppingShowDimensions: true,
-    multiple: false,
-    folder,
-  };
-
-  if (typeof cropAspectRatio === 'number' && Number.isFinite(cropAspectRatio) && cropAspectRatio > 0) {
-    widgetOptions.croppingAspectRatio = cropAspectRatio;
-  }
-
-  const widgetProps: any = {
-    uploadPreset: uploadPreset ?? '',
-    options: {
-      ...widgetOptions,
-    },
-    onEvent: (event: string) => {
-      if (event === 'queues-start') {
-        startUploadToast();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Image upload failed');
       }
-    },
-    onSuccess: (result: UploadResult) => {
-      finishUploadToast();
-      const uploadedUrl = result.info?.secure_url;
-      if (typeof uploadedUrl === 'string' && uploadedUrl.length > 0) {
-        setUploadError('');
-        onChange(uploadedUrl);
-        toast.success('Image uploaded');
-      } else {
-        setUploadError('Image upload failed');
-        toast.error('Image upload failed');
+
+      const uploadedUrl =
+        (typeof payload?.playback_url === 'string' && payload.playback_url) ||
+        (typeof payload?.secure_url === 'string' && payload.secure_url) ||
+        '';
+
+      if (!uploadedUrl) {
+        throw new Error('Image upload failed');
       }
-    },
-    onError: () => {
-      finishUploadToast();
-      setUploadError('Image upload failed');
-      toast.error('Image upload failed');
-    },
-    onClose: finishUploadToast,
+
+      onChange(uploadedUrl);
+      toast.success('Image uploaded');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Image upload failed';
+      setUploadError(message);
+      toast.error(message);
+    } finally {
+      dismissUploadToast();
+      setIsUploading(false);
+    }
+  };
+
+  const openPicker = () => {
+    if (isUploading) return;
+    inputRef.current?.click();
   };
 
   return (
     <label htmlFor={id} className={`flex flex-col space-y-2 text-sm font-medium text-slate-700 dark:text-slate-200 ${className ?? ''}`}>
       {label}
-      <CldUploadWidget {...widgetProps}>
-        {({ open }) => (
-          <>
-            {previewUrl ? (
-              <div
-                id={id}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  openWidgetRef.current = open;
-                  openWidget();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openWidgetRef.current = open;
-                    openWidget();
-                  }
-                }}
-                className="overflow-hidden rounded-xl border bg-slate-100 dark:bg-slate-900"
-              >
-                <div className="flex min-h-[180px] max-h-[320px] items-center justify-center p-2">
-                  <img src={previewUrl} alt={`${label} preview`} className="max-h-[300px] max-w-full object-contain" />
-                </div>
-              </div>
-            ) : (
-              <div
-                id={id}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  openWidgetRef.current = open;
-                  openWidget();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openWidgetRef.current = open;
-                    openWidget();
-                  }
-                }}
-                onDragEnter={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDragActive(true);
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDragActive(true);
-                }}
-                onDragLeave={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDragActive(false);
-                }}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setIsDragActive(false);
-                  openWidgetRef.current = open;
-                  openWidget();
-                }}
-                className={`${dropzoneBaseStyles} ${isDragActive ? 'border-slate-900 bg-slate-50 dark:border-slate-100 dark:bg-slate-900' : ''}`}
-              >
-                <div className="space-y-1">
-                  <p className="font-medium text-slate-700 dark:text-slate-200">Click or drag and drop to upload</p>
-                  <p className="text-xs text-slate-500">Single image only</p>
-                </div>
-              </div>
-            )}
-            {previewUrl ? (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  openWidgetRef.current = open;
-                  openWidget();
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openWidgetRef.current = open;
-                    openWidget();
-                  }
-                }}
-                className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-center text-xs text-slate-500 transition hover:border-slate-400 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600"
-              >
-                Click to replace image
-              </div>
-            ) : null}
-          </>
-        )}
-      </CldUploadWidget>
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="sr-only"
+        disabled={isUploading}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file) {
+            void uploadFile(file);
+          }
+        }}
+      />
+      {previewUrl ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openPicker}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openPicker();
+            }
+          }}
+          className="overflow-hidden rounded-xl border bg-slate-100 dark:bg-slate-900"
+        >
+          <div className="flex min-h-[180px] max-h-[320px] items-center justify-center p-2">
+            <img src={previewUrl} alt={`${label} preview`} className="max-h-[300px] max-w-full object-contain" />
+          </div>
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openPicker}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openPicker();
+            }
+          }}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragActive(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragActive(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragActive(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsDragActive(false);
+            const file = event.dataTransfer.files?.[0];
+            if (file) {
+              void uploadFile(file);
+            }
+          }}
+          className={`${dropzoneBaseStyles} ${isDragActive ? 'border-slate-900 bg-slate-50 dark:border-slate-100 dark:bg-slate-900' : ''}`}
+        >
+          <div className="space-y-1">
+            <p className="font-medium text-slate-700 dark:text-slate-200">
+              {isUploading ? 'Uploading…' : 'Click or drag and drop to upload'}
+            </p>
+            <p className="text-xs text-slate-500">Single image only</p>
+          </div>
+        </div>
+      )}
+      {previewUrl ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={openPicker}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openPicker();
+            }
+          }}
+          className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-center text-xs text-slate-500 transition hover:border-slate-400 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600"
+        >
+          Click to replace image
+        </div>
+      ) : null}
       {uploadError ? <span className="text-xs text-red-600">{uploadError}</span> : null}
     </label>
   );

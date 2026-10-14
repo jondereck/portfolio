@@ -562,9 +562,9 @@ function AboutHighlightDeck({ highlights }) {
         return;
       }
       step = (step + 1) % 6;
-      // Subtle up-nudge loop: rest → lift → settle → rest
-      if (step === 1) setGuideOffset(-12);
-      else if (step === 2) setGuideOffset(-5);
+      // Subtle down-nudge loop: rest → drop → settle → rest
+      if (step === 1) setGuideOffset(12);
+      else if (step === 2) setGuideOffset(5);
       else setGuideOffset(0);
     }, 650);
 
@@ -588,17 +588,16 @@ function AboutHighlightDeck({ highlights }) {
 
   const handlePointerMove = (event) => {
     if (!dragRef.current.active) return;
-    setDragY(event.clientY - dragRef.current.startY);
+    // Swipe down only — ignore upward drag
+    setDragY(Math.max(0, event.clientY - dragRef.current.startY));
   };
 
   const handlePointerUp = () => {
     if (!dragRef.current.active) return;
     dragRef.current.active = false;
     setDragging(false);
-    if (dragY <= -48) {
+    if (dragY >= 48) {
       goTo(active + 1);
-    } else if (dragY >= 48) {
-      goTo(active - 1);
     }
     setDragY(0);
   };

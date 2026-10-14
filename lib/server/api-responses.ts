@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { formatZodFieldErrors } from '@/lib/server/request-parsing';
+import { ObjectStorageError } from '@/lib/server/object-storage';
 import { RequestValidationError } from '@/lib/server/uploads';
 import { createFormErrorResponse } from '@/lib/server/form-responses';
 
@@ -20,6 +21,16 @@ export function toErrorResponse(error: unknown, fallbackMessage: string) {
           ...(error.details ? { validation: error.details } : {}),
           ...(error.meta ?? {}),
         },
+      },
+      error.status,
+    );
+  }
+
+  if (error instanceof ObjectStorageError) {
+    return createFormErrorResponse(
+      {
+        error: error.message,
+        errorCode: error.errorCode,
       },
       error.status,
     );

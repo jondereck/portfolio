@@ -15,10 +15,14 @@
     "bootstrap-admin": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json prisma/bootstrap-admin.ts",
     "auth:neon:audit": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json scripts/neon-auth-audit.ts",
     "auth:neon:backfill": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json scripts/neon-auth-backfill.ts",
+    "storage:cost-report": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json scripts/storage-cost-report.ts",
+    "storage:migrate-cloudinary": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json scripts/migrate-cloudinary-to-neon.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
+    "@aws-sdk/client-s3": "^3.1151.0",
+    "@aws-sdk/s3-request-presigner": "^3.1151.0",
     "@base-ui/react": "^1.3.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -57,11 +61,13 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@neon/config": "^1.9.1",
     "@types/node": "^25.5.2",
     "@types/react": "^19.2.14",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.2.4",
+    "neon": "^8.4.4",
     "playwright": "^1.59.1",
     "png-to-ico": "^3.0.1",
     "prisma": "^5.3.1",

@@ -6,6 +6,12 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ---
 
+## 2026-10-14
+
+- **Neon Object Storage (dual-provider)** — New uploads prefer Neon `public-assets` when `AWS_*` is set; existing Cloudinary gallery URLs stay as-is. Added adapter, presign route, ImageUpload via `/api/upload`, schema `storageProvider`/`storageKey`, cost report + Cloudinary→Neon migrate dry-run script. Provisioned bucket on portfolio production (`aws-us-east-1`). `lib/server/object-storage.ts`, `lib/server/uploads.ts`, `neon.ts`, `docs/neon-object-storage.md`.
+- **PWA Quick Access once/day** — Mobile install popup dismisses for the calendar day (`localStorage`); permanently hidden after install / standalone. `PwaInstallPrompt.jsx`.
+- **About deck swipe-down only** — Highlight stack advances on swipe down only (no swipe up); idle nudge matches down arrow. `MinimalistEditorialPortfolio.jsx`.
+
 ## 2026-10-13
 
 - **Gallery continue cross-device sync** — “Continue where you left off” was effectively device-local: viewer-session API only allowed album owners (`canAccessProfile`), client skipped server PUT without `viewerUserId`, and slideshow debounce cancelled pending saves. Fix: allow authenticated users with a valid share token; bootstrap `userId` from `/api/session/status`; pass `share` + `credentials`; flush pending PUT on effect cleanup / close. `viewer-session/route.ts`, `session/status/route.ts`, `app/gallery/[slug]/page.jsx`.

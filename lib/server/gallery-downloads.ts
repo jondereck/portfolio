@@ -161,6 +161,11 @@ export const resolvePhotoDownloadSourceUrl = (photo: AlbumPhotoRecord) => {
     return null;
   }
 
+  const provider = (photo.storageProvider || '').toLowerCase();
+  if (provider === 'neon') {
+    return photo.imageUrl;
+  }
+
   const cloudinaryOriginal = resolveOriginalCloudinaryUrl(photo);
   return cloudinaryOriginal || photo.imageUrl;
 };

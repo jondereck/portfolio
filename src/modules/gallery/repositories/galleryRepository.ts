@@ -12,6 +12,8 @@ export const photoSelect = {
   albumId: true,
   imageUrl: true,
   cloudinaryPublicId: true,
+  storageProvider: true,
+  storageKey: true,
   contentHash: true,
   originalFilename: true,
   mimeType: true,
@@ -335,6 +337,8 @@ export class GalleryRepository {
     albumId: number;
     imageUrl: string;
     cloudinaryPublicId?: string;
+    storageProvider?: string;
+    storageKey?: string;
     contentHash?: string;
     originalFilename?: string;
     mimeType?: string;
@@ -360,6 +364,8 @@ export class GalleryRepository {
           albumId: data.albumId,
           imageUrl: data.imageUrl,
           cloudinaryPublicId: data.cloudinaryPublicId ?? null,
+          storageProvider: data.storageProvider ?? null,
+          storageKey: data.storageKey ?? null,
           contentHash: data.contentHash ?? null,
           originalFilename: data.originalFilename ?? null,
           mimeType: data.mimeType ?? null,

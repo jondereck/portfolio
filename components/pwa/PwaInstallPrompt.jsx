@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Share2, X } from 'lucide-react';
 
-const SESSION_DISMISS_KEY = 'portfolio:pwa-install-dismissed-session';
+const DISMISS_DAY_KEY = 'portfolio:pwa-install-dismissed-day';
+const INSTALLED_KEY = 'portfolio:pwa-installed';
+
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
 
 const isMobileViewport = () => {
   if (typeof window === 'undefined') {
@@ -19,6 +22,38 @@ const isStandaloneDisplay = () => {
   }
 
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+};
+
+const hasInstalledFlag = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(INSTALLED_KEY) === 'true';
+};
+
+const markInstalled = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(INSTALLED_KEY, 'true');
+};
+
+const wasDismissedToday = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(DISMISS_DAY_KEY) === getTodayKey();
+};
+
+const dismissForToday = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(DISMISS_DAY_KEY, getTodayKey());
 };
 
 const isIosSafari = () => {
@@ -42,31 +77,38 @@ export default function PwaInstallPrompt() {
       return undefined;
     }
 
-    const dismissed = window.sessionStorage.getItem(SESSION_DISMISS_KEY) === 'true';
-    const installed = isStandaloneDisplay();
+    const installed = isStandaloneDisplay() || hasInstalledFlag();
+    if (installed) {
+      markInstalled();
+    }
 
-    setIsDismissed(dismissed);
+    setIsDismissed(wasDismissedToday());
     setIsInstalled(installed);
 
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
-      if (!isMobileViewport() || isStandaloneDisplay()) {
+      if (!isMobileViewport() || isStandaloneDisplay() || hasInstalledFlag()) {
         return;
       }
 
       setInstallEvent(event);
       setIsInstalled(false);
-      setIsDismissed(window.sessionStorage.getItem(SESSION_DISMISS_KEY) === 'true');
+      setIsDismissed(wasDismissedToday());
     };
 
     const handleInstalled = () => {
+      markInstalled();
       setInstallEvent(null);
       setIsInstalled(true);
       setIsDismissed(true);
     };
 
     const handleFocus = () => {
-      setIsInstalled(isStandaloneDisplay());
+      const installedNow = isStandaloneDisplay() || hasInstalledFlag();
+      if (installedNow) {
+        markInstalled();
+      }
+      setIsInstalled(installedNow);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -105,10 +147,7 @@ export default function PwaInstallPrompt() {
   }
 
   const dismiss = () => {
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(SESSION_DISMISS_KEY, 'true');
-    }
-
+    dismissForToday();
     setIsDismissed(true);
   };
 
@@ -121,20 +160,21 @@ export default function PwaInstallPrompt() {
       await installEvent.prompt();
       const result = await installEvent.userChoice;
 
-      if (result?.outcome !== 'accepted' && typeof window !== 'undefined') {
-        window.sessionStorage.setItem(SESSION_DISMISS_KEY, 'true');
+      if (result?.outcome === 'accepted') {
+        markInstalled();
+        setIsInstalled(true);
+        setIsDismissed(true);
+      } else {
+        dismissForToday();
+        setIsDismissed(true);
       }
     } finally {
       setInstallEvent(null);
-      setIsDismissed(typeof window !== 'undefined' && window.sessionStorage.getItem(SESSION_DISMISS_KEY) === 'true');
     }
   };
 
   const handleInstallGuide = () => {
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(SESSION_DISMISS_KEY, 'true');
-    }
-
+    dismissForToday();
     setIsDismissed(true);
   };
 

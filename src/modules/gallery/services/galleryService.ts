@@ -390,6 +390,8 @@ export class GalleryService {
         albumId,
         imageUrl: input.imageUrl,
         cloudinaryPublicId: input.cloudinaryPublicId,
+        storageProvider: input.storageProvider,
+        storageKey: input.storageKey,
         contentHash: input.contentHash,
         originalFilename: input.originalFilename,
         mimeType: input.mimeType,
@@ -482,7 +484,12 @@ export class GalleryService {
       {
         ...args.input,
         imageUrl: uploadedMedia.playbackUrl,
-        cloudinaryPublicId: uploadedMedia.publicId ?? args.input.cloudinaryPublicId,
+        cloudinaryPublicId:
+          uploadedMedia.storageProvider === 'cloudinary'
+            ? uploadedMedia.publicId ?? args.input.cloudinaryPublicId
+            : undefined,
+        storageProvider: uploadedMedia.storageProvider ?? args.input.storageProvider,
+        storageKey: uploadedMedia.storageKey ?? args.input.storageKey,
         contentHash: allowDuplicateContent ? undefined : prepared.contentHash,
         originalFilename: prepared.originalFilename,
         mimeType: prepared.mimeType,
@@ -602,6 +609,8 @@ export class GalleryService {
               albumId: targetAlbumId,
               imageUrl: photo.imageUrl,
               cloudinaryPublicId: photo.cloudinaryPublicId,
+              storageProvider: photo.storageProvider,
+              storageKey: photo.storageKey,
               contentHash: photo.contentHash,
               originalFilename: photo.originalFilename,
               mimeType: photo.mimeType,
