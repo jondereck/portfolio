@@ -6,6 +6,7 @@ import {
   areIdListsEqual,
   getPhotoSortTime,
 } from '@/app/admin/gallery/utils';
+import { useUnclothyTasksStore } from '@/store/unclothyTasks';
 import { createEmptyAlbumForm, fetchJson, normalizeAlbumForm } from './galleryAdminShared';
 import {
   createEmptyUploadSummary,
@@ -166,7 +167,7 @@ export function useGalleryAdminController() {
   const loadPhotos = async (albumId, nextSort = sortMode) => {
     if (!albumId) {
       setPhotos([]);
-      return;
+      return [];
     }
 
     const sortKey = nextSort || 'custom';
@@ -192,14 +193,39 @@ export function useGalleryAdminController() {
       loadedAlbumIdRef.current = albumId;
       void writeCachedAlbumPhotos(albumId, sortKey, nextPhotos);
       void warmAlbumMediaCache(nextPhotos);
+      return nextPhotos;
     } catch (error) {
       if (photosRef.current.length === 0 || loadedAlbumIdRef.current !== albumId) {
         toast.error(error.message);
       }
+      return photosRef.current;
     } finally {
       setLoadingPhotos(false);
     }
   };
+
+  const lastCompletedAt = useUnclothyTasksStore((state) => state.lastCompletedAt);
+  const lastCompletedAlbumId = useUnclothyTasksStore((state) => state.lastCompletedAlbumId);
+  const lastCompletedAtRef = useRef(lastCompletedAt);
+  const selectedAlbumIdRef = useRef(selectedAlbumId);
+  const sortModeRef = useRef(sortMode);
+  selectedAlbumIdRef.current = selectedAlbumId;
+  sortModeRef.current = sortMode;
+
+  // Live-refresh album media when an Unclothy task finishes — even if the generate
+  // sheet unmounted after enqueue (previously only GalleryUnclothySection refreshed).
+  useEffect(() => {
+    if (!lastCompletedAt || lastCompletedAt === lastCompletedAtRef.current) {
+      return;
+    }
+    lastCompletedAtRef.current = lastCompletedAt;
+    const albumId = selectedAlbumIdRef.current;
+    if (!albumId || lastCompletedAlbumId !== albumId) {
+      return;
+    }
+    void loadPhotos(albumId, sortModeRef.current);
+    void loadAlbums();
+  }, [lastCompletedAlbumId, lastCompletedAt]);
 
   useEffect(() => {
     void (async () => {

@@ -25,8 +25,8 @@ const nonNegativeInt = z.coerce.number().int().min(0).max(1_000_000);
 export const viewerSessionUpsertSchema = z.object({
   photoIndex: nonNegativeInt.default(0),
   viewerMode: z.enum(VIEWER_MODES).default('focus'),
-  // Clamp playback delay to sane bounds (0.5s – 5min) to avoid runaway timers.
-  delayMs: z.coerce.number().int().min(500).max(300_000).default(5000),
+  // 0 = timer off; otherwise clamp to 0.5s – 5min so PUT is not rejected mid-slideshow.
+  delayMs: z.coerce.number().int().min(0).max(300_000).default(5000),
   isPlaying: z.coerce.boolean().default(false),
   splitLeftIndex: nonNegativeInt.nullable().default(null),
   splitRightIndex: nonNegativeInt.nullable().default(null),
@@ -46,6 +46,26 @@ export function isResumableSession(session: ViewerSession | null | undefined): b
   if ((session.splitLeftIndex ?? 0) > 0) return true;
   if ((session.splitRightIndex ?? 0) > 0) return true;
   return session.isPlaying === true;
+}
+
+/**
+ * Pick the newer of remote (server) vs local cache for cross-device resume.
+ * Prefer remote when timestamps are missing/equal so another device wins over
+ * a stale same-browser localStorage entry.
+ */
+export function pickNewerViewerSession(
+  remote: ViewerSession | null | undefined,
+  local: ViewerSession | null | undefined,
+): ViewerSession | null {
+  const remoteOk = isResumableSession(remote) ? remote : null;
+  const localOk = isResumableSession(local) ? local : null;
+  if (!remoteOk) return localOk;
+  if (!localOk) return remoteOk;
+
+  const remoteAt = typeof remoteOk.updatedAt === 'string' ? remoteOk.updatedAt : '';
+  const localAt = typeof localOk.updatedAt === 'string' ? localOk.updatedAt : '';
+  if (localAt && remoteAt && localAt > remoteAt) return localOk;
+  return remoteOk;
 }
 
 /** localStorage key for the immediate client-side cache, scoped per user + album. */

@@ -6,6 +6,11 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ---
 
+## 2026-10-20
+
+- **Slideshow cross-device sync** — Viewer-session PUT rejected `delayMs: 0` (timer off), so progress stayed in localStorage only; Continue preferred stale per-device cache. Allow `delayMs: 0`, pick newer of server vs local (`pickNewerViewerSession`), re-fetch on Continue / tab focus, and push local-up when local wins. `lib/gallery/viewer-session.ts`, `app/gallery/[slug]/page.jsx`.
+- **Unclothy live media refresh** — Album photo reload lived only in `GalleryUnclothySection`, which unmounts when Generate closes after enqueue, so new outputs needed a full page refresh. Move completion refresh into `useGalleryAdminController`; `openTask` awaits `loadPhotos` before opening detail. `useGalleryAdminController.js`, `GalleryMediaPanel.jsx`, `GalleryUnclothySection.jsx`.
+
 ## 2026-10-14
 
 - **Admin CRUD busy spinner rule** — AGENTS.md requires spinner beside create/update/delete/save/refresh controls; shared `AdminBusyButton` wired on FormDialog, cert/project Save order, account, role access, site content. `AGENTS.md`, `AdminBusyButton.jsx`, `FormDialog.jsx`.

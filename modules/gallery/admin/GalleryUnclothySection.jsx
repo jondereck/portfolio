@@ -92,6 +92,10 @@ export default function GalleryUnclothySection({
   const [settings, setSettings] = useState(unclothyDefaultUiSettings);
   const [autoRefreshedAt, setAutoRefreshedAt] = useState(null);
 
+  const lastCompletedAt = useUnclothyTasksStore((state) => state.lastCompletedAt);
+  const lastCompletedAlbumId = useUnclothyTasksStore((state) => state.lastCompletedAlbumId);
+  const lastCompletedAtRef = useRef(lastCompletedAt);
+
   const queue = useUnclothyTasksStore((state) => state.queue);
   const active = useUnclothyTasksStore((state) => state.active);
   const activeTasks = useUnclothyTasksStore((state) => state.activeTasks);
@@ -101,10 +105,6 @@ export default function GalleryUnclothySection({
   const cancelTask = useUnclothyTasksStore((state) => state.cancelTask);
   const retryTask = useUnclothyTasksStore((state) => state.retryTask);
   const startRunner = useUnclothyTasksStore((state) => state.startRunner);
-  const lastCompletedAt = useUnclothyTasksStore((state) => state.lastCompletedAt);
-  const lastCompletedAlbumId = useUnclothyTasksStore((state) => state.lastCompletedAlbumId);
-  const lastCompletedAtRef = useRef(lastCompletedAt);
-
   const loadStatus = useCallback(async () => {
     setStatus((current) => ({ ...current, loading: true }));
     try {
@@ -130,6 +130,8 @@ export default function GalleryUnclothySection({
     loadStatus();
   }, [loadStatus]);
 
+  // Photo list refresh lives in useGalleryAdminController (survives generate-sheet unmount).
+  // Here we only refresh provider status chrome when a task finishes for this album.
   useEffect(() => {
     if (!selectedAlbumId) {
       return;
@@ -141,16 +143,9 @@ export default function GalleryUnclothySection({
     if (lastCompletedAlbumId !== selectedAlbumId) {
       return;
     }
-
-    if (typeof controller?.loadPhotos === 'function') {
-      void controller.loadPhotos(selectedAlbumId, controller?.sortMode);
-    }
-    if (typeof controller?.loadAlbums === 'function') {
-      void controller.loadAlbums();
-    }
     setAutoRefreshedAt(Date.now());
     void loadStatus();
-  }, [controller, lastCompletedAlbumId, lastCompletedAt, loadStatus, selectedAlbumId]);
+  }, [lastCompletedAlbumId, lastCompletedAt, loadStatus, selectedAlbumId]);
 
   const settingsEnums = useMemo(() => status.settingsEnums && typeof status.settingsEnums === 'object' ? status.settingsEnums : {}, [status.settingsEnums]);
 

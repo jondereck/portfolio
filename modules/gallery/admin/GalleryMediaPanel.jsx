@@ -120,6 +120,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     uploadFiles,
     createAlbumRecord,
     loadAlbums,
+    loadPhotos,
     updatePhotoInState,
     deleteSelectedPhotos,
     moveSelectedPhotos,
@@ -594,7 +595,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     }
   };
 
-  const openTask = (task) => {
+  const openTask = async (task) => {
     const albumId = task?.albumId ?? null;
     const photoId = normalizePhotoId(task?.sourcePhotoId ?? null);
     const suppressNotFoundError = task?.suppressNotFoundError === true;
@@ -618,7 +619,17 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
       return;
     }
 
-    const found = photos.find((photo) => normalizePhotoId(photo.id) === photoId) ?? null;
+    let found = photos.find((photo) => normalizePhotoId(photo.id) === photoId) ?? null;
+    if (!found && typeof loadPhotos === 'function') {
+      // Generated media often lands after enqueue closes the generate sheet —
+      // refresh the album list before giving up so detail open works without a full page reload.
+      const nextPhotos = await loadPhotos(albumId, sortMode);
+      found =
+        (Array.isArray(nextPhotos) ? nextPhotos : photos).find(
+          (photo) => normalizePhotoId(photo.id) === photoId,
+        ) ?? null;
+    }
+
     if (found) {
       setPreviewPhoto(found);
       setPreviewOpenGenerate(false);
@@ -631,6 +642,16 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     }
     setPendingPreviewTask(null);
   };
+
+  // Keep the open detail preview in sync when the album list live-refreshes
+  // (e.g. Unclothy ingest) so newly added neighbors are navigable without a full reload.
+  useEffect(() => {
+    if (!previewPhoto?.id) return;
+    const fresh = photos.find((photo) => normalizePhotoId(photo.id) === normalizePhotoId(previewPhoto.id));
+    if (fresh && fresh !== previewPhoto) {
+      setPreviewPhoto(fresh);
+    }
+  }, [photos, previewPhoto]);
 
   useEffect(() => {
     if (!pendingPreviewTask) return;

@@ -26,6 +26,7 @@ import {
   VIEWER_MODES,
   clearLocalViewerSession,
   isResumableSession,
+  pickNewerViewerSession,
   readLocalViewerSession,
   writeLocalViewerSession,
 } from "@/lib/gallery/viewer-session";
@@ -1622,15 +1623,82 @@ export default function AlbumDetailPage({ params }) {
     return null;
   }, [album?.id, resumePrompt?.session, savedViewerSession, viewerUserId]);
 
-  /** Slideshow entry: restore last per-album view when one exists; otherwise start fresh. */
-  const openSlideshowOrResume = useCallback(() => {
-    const session = resolveLatestViewerSession();
+  const fetchRemoteViewerSession = useCallback(async () => {
+    if (!album?.id) return { userId: viewerUserId, session: null };
+    try {
+      const res = await fetch(buildViewerSessionUrl(album.id, shareToken), {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (!res.ok) return { userId: viewerUserId, session: null };
+      const data = await res.json();
+      return {
+        userId: data?.userId ?? viewerUserId,
+        session: data?.session ?? null,
+      };
+    } catch {
+      return { userId: viewerUserId, session: null };
+    }
+  }, [album?.id, shareToken, viewerUserId]);
+
+  const pushViewerSessionToServer = useCallback(
+    (session, userId) => {
+      if (!album?.id || !userId || !session) return;
+      writeLocalViewerSession(album.id, session, userId);
+      viewerSessionRef.current = {
+        userId,
+        albumId: album.id,
+        payload: {
+          photoIndex: session.photoIndex,
+          viewerMode: session.viewerMode,
+          delayMs: session.delayMs,
+          isPlaying: session.isPlaying,
+          splitLeftIndex: session.splitLeftIndex,
+          splitRightIndex: session.splitRightIndex,
+        },
+      };
+      flushViewerSession({ force: true });
+    },
+    [album?.id, flushViewerSession],
+  );
+
+  /** Slideshow entry: re-fetch server session first so another device wins over stale local. */
+  const openSlideshowOrResume = useCallback(async () => {
+    const remoteResult = await fetchRemoteViewerSession();
+    if (remoteResult.userId && remoteResult.userId !== viewerUserId) {
+      setViewerUserId(remoteResult.userId);
+    }
+    const local = album?.id
+      ? readLocalViewerSession(album.id, remoteResult.userId ?? viewerUserId)
+          ?.session
+      : null;
+    const preferred = pickNewerViewerSession(remoteResult.session, local);
+    const session = preferred || resolveLatestViewerSession();
+
     if (session) {
+      setSavedViewerSession(session);
+      // If we preferred local (newer or remote missing), push so other devices catch up.
+      if (
+        preferred &&
+        local &&
+        preferred === local &&
+        remoteResult.userId
+      ) {
+        pushViewerSessionToServer(session, remoteResult.userId);
+      }
       resumeFromSession(session);
       return;
     }
     openViewerAt(0, { mode: "slideshow" });
-  }, [openViewerAt, resolveLatestViewerSession, resumeFromSession]);
+  }, [
+    album?.id,
+    fetchRemoteViewerSession,
+    openViewerAt,
+    pushViewerSessionToServer,
+    resolveLatestViewerSession,
+    resumeFromSession,
+    viewerUserId,
+  ]);
 
   const startFreshSlideshow = useCallback(() => {
     startFreshSession();
@@ -1688,22 +1756,32 @@ export default function AlbumDetailPage({ params }) {
       if (userId) setViewerUserId(userId);
 
       const local = localMatch?.session ?? null;
-
-      let chosen = remote;
-      if (
-        local &&
-        (!remote ||
-          (local.updatedAt &&
-            remote.updatedAt &&
-            local.updatedAt > remote.updatedAt) ||
-          (!remote.updatedAt && local.updatedAt))
-      ) {
-        chosen = local;
-      }
+      const chosen = pickNewerViewerSession(remote, local);
 
       if (!active) return;
       if (chosen) {
         setSavedViewerSession(chosen);
+        if (userId) {
+          writeLocalViewerSession(album.id, chosen, userId);
+        }
+        // Preferring a newer local cache means the last device never finished PUT —
+        // push it now so the next device can resume from the server.
+        if (userId && local && chosen === local) {
+          viewerSessionRef.current = {
+            userId,
+            albumId: album.id,
+            payload: {
+              photoIndex: chosen.photoIndex,
+              viewerMode: chosen.viewerMode,
+              delayMs: chosen.delayMs,
+              isPlaying: chosen.isPlaying,
+              splitLeftIndex: chosen.splitLeftIndex,
+              splitRightIndex: chosen.splitRightIndex,
+            },
+          };
+          lastSyncedViewerPayloadRef.current = "";
+          flushViewerSession({ force: true });
+        }
       }
       if (!resumeHandledRef.current && isResumableSession(chosen)) {
         setResumePrompt({ session: chosen });
@@ -1713,7 +1791,7 @@ export default function AlbumDetailPage({ params }) {
     return () => {
       active = false;
     };
-  }, [album?.id, shareToken]);
+  }, [album?.id, flushViewerSession, shareToken]);
 
   // Persist viewer session: immediate localStorage + debounced server PUT.
   useEffect(() => {
@@ -1777,6 +1855,51 @@ export default function AlbumDetailPage({ params }) {
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
   }, [flushViewerSession]);
+
+  // When returning to this tab/device, pull the server session so Continue matches
+  // progress made on another phone/PC (localStorage alone stays device-local).
+  useEffect(() => {
+    if (!album?.id) return undefined;
+
+    const syncFromServer = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (viewerOpen) return;
+
+      const remoteResult = await fetchRemoteViewerSession();
+      if (remoteResult.userId && remoteResult.userId !== viewerUserId) {
+        setViewerUserId(remoteResult.userId);
+      }
+      const local = readLocalViewerSession(
+        album.id,
+        remoteResult.userId ?? viewerUserId,
+      )?.session;
+      const chosen = pickNewerViewerSession(remoteResult.session, local);
+      if (!chosen) return;
+
+      setSavedViewerSession(chosen);
+      if (remoteResult.userId && local && chosen === local) {
+        pushViewerSessionToServer(chosen, remoteResult.userId);
+      } else if (remoteResult.userId && chosen === remoteResult.session) {
+        writeLocalViewerSession(album.id, chosen, remoteResult.userId);
+      }
+    };
+
+    const onVisibility = () => {
+      void syncFromServer();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+    };
+  }, [
+    album?.id,
+    fetchRemoteViewerSession,
+    pushViewerSessionToServer,
+    viewerOpen,
+    viewerUserId,
+  ]);
 
   // Opening a photo from the grid before answering suppresses the prompt for
   // this visit (without deleting the saved session).
