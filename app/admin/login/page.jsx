@@ -169,13 +169,15 @@ export default function AdminLoginPage() {
     });
 
     const payload = await parseJson(response);
-    setSubmittingMode(null);
 
     if (!response.ok) {
+      setSubmittingMode(null);
       setError(payload.error || 'Unable to start Google sign-in.');
       return;
     }
 
+    // Keep submittingMode === 'google' through redirect so the Send Code button
+    // does not flash its "Sending code..." spinner.
     startRedirect(payload.redirectTo, { allowExternal: true });
   };
 
@@ -223,13 +225,14 @@ export default function AdminLoginPage() {
     });
 
     const payload = await parseJson(response);
-    setSubmittingMode(null);
 
     if (!response.ok) {
+      setSubmittingMode(null);
       setError(payload.error || 'Unable to verify that sign-in code.');
       return;
     }
 
+    // Keep verify-code busy state until navigation completes.
     startRedirect(payload.redirectTo);
   };
 
@@ -290,10 +293,17 @@ export default function AdminLoginPage() {
           ) : null}
 
           <Button type="submit" disabled={disableInputs || !neonConfigured} className={primaryButtonClass}>
-            {submittingMode === 'send-code' || submittingMode === 'verify-code' || redirecting ? (
+            {submittingMode === 'send-code' || submittingMode === 'verify-code' ? (
               <>
                 <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
-                {codeStep === 'request' ? 'Sending code...' : 'Verifying code...'}
+                {submittingMode === 'send-code' || codeStep === 'request'
+                  ? 'Sending code...'
+                  : 'Verifying code...'}
+              </>
+            ) : redirecting && submittingMode !== 'google' ? (
+              <>
+                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+                Redirecting...
               </>
             ) : checkingSession ? (
               'Checking session...'
