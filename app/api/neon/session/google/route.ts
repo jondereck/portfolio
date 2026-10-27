@@ -77,10 +77,10 @@ export async function POST(request: Request) {
     }
 
     const outgoing = NextResponse.json({ ok: true, redirectTo: data.url });
+    await setAdminAccessGrantCookie(outgoing);
     for (const setCookie of proxyResponse.headers.getSetCookie()) {
       outgoing.headers.append('set-cookie', setCookie);
     }
-    await setAdminAccessGrantCookie(outgoing);
     return outgoing;
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'google');

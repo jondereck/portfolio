@@ -130,11 +130,34 @@ export async function hasValidAdminAccessPolicy(request?: Request): Promise<bool
   return hasValidAdminSession(request);
 }
 
+function preserveAndSetCookie(
+  response: NextResponse,
+  cookie: {
+    name: string;
+    value: string;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: "lax" | "strict" | "none";
+    path?: string;
+    maxAge?: number;
+  },
+) {
+  const existingSetCookies = response.headers.getSetCookie();
+  response.cookies.set(cookie);
+  const targetName = cookie.name;
+  for (const raw of existingSetCookies) {
+    const name = raw.split('=')[0]?.trim();
+    if (name && name !== targetName) {
+      response.headers.append('set-cookie', raw);
+    }
+  }
+}
+
 export async function setAdminSessionCookie(response: NextResponse, token: string) {
   const settings = await getAdminSettings();
   const sessionTtlSeconds = settings.security.sessionTtlHours * 60 * 60;
 
-  response.cookies.set({
+  preserveAndSetCookie(response, {
     name: ADMIN_SESSION_COOKIE,
     value: token,
     httpOnly: true,
@@ -146,7 +169,7 @@ export async function setAdminSessionCookie(response: NextResponse, token: strin
 }
 
 export function clearAdminSessionCookie(response: NextResponse) {
-  response.cookies.set({
+  preserveAndSetCookie(response, {
     name: ADMIN_SESSION_COOKIE,
     value: '',
     httpOnly: true,
@@ -223,7 +246,7 @@ export async function setAdminAccessGrantCookie(response: NextResponse): Promise
     return false;
   }
 
-  response.cookies.set({
+  preserveAndSetCookie(response, {
     name: ADMIN_ACCESS_GRANT_COOKIE,
     value: token,
     httpOnly: true,
@@ -236,7 +259,7 @@ export async function setAdminAccessGrantCookie(response: NextResponse): Promise
 }
 
 export function clearAdminAccessGrantCookie(response: NextResponse) {
-  response.cookies.set({
+  preserveAndSetCookie(response, {
     name: ADMIN_ACCESS_GRANT_COOKIE,
     value: '',
     httpOnly: true,

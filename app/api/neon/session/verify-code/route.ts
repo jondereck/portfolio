@@ -57,10 +57,10 @@ export async function POST(request: Request) {
     }
 
     const outgoing = NextResponse.json({ ok: true, redirectTo });
+    await issueAdminAccessCookie(outgoing);
     for (const setCookie of proxyResponse.headers.getSetCookie()) {
       outgoing.headers.append('set-cookie', setCookie);
     }
-    await issueAdminAccessCookie(outgoing);
     return outgoing;
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'verify-code');

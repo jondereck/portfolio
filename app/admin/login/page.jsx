@@ -77,8 +77,19 @@ export default function AdminLoginPage() {
   const [codeOtp, setCodeOtp] = useState('');
   const [codeStep, setCodeStep] = useState('request');
 
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
+  const [error, setError] = useState(() => {
+    const urlError = searchParams.get('error');
+    if (urlError === 'admin-access-required') return 'Your admin session expired. Please sign in again.';
+    if (urlError === 'oauth-exchange-failed') return 'Unable to complete Google sign-in. Please try again.';
+    if (urlError === 'establish-failed') return 'Unable to complete sign-in. Please try again.';
+    return '';
+  });
+  const [info, setInfo] = useState(() => {
+    const urlState = searchParams.get('state');
+    if (urlState === 'pending') return 'Your Neon account is connected, but your local workspace access is still waiting for admin approval.';
+    if (urlState === 'suspended') return 'Your Neon identity is linked, but this local account is currently suspended.';
+    return '';
+  });
   const [submittingMode, setSubmittingMode] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [redirecting, setRedirecting] = useState(false);

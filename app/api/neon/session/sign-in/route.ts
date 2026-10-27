@@ -130,8 +130,8 @@ export async function POST(request: Request) {
     }
 
     const outgoing = NextResponse.json({ ok: true, redirectTo });
-    copyNeonAuthHeaders(proxyResponse, outgoing);
     await issueAdminAccessCookie(outgoing);
+    copyNeonAuthHeaders(proxyResponse, outgoing);
     return outgoing;
   } catch (error) {
     const mapped = mapNeonAuthError(error, 'sign-in');

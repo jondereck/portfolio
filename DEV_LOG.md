@@ -6,6 +6,10 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ---
 
+## 2026-10-27
+
+- **Admin login redirect loop fix (Email OTP + Google Auth)** — Two root causes fixed: (1) `response.cookies.set()` in `issueAdminAccessCookie`/`setAdminAccessGrantCookie` wiped existing Neon Auth `Set-Cookie` headers (session + PKCE state cookies lost) → fixed with `preserveAndSetCookie` helper + moved admin cookie minting before Neon header copying in `verify-code`, `google`, and `sign-in`. (2) Google OAuth `callbackURL` lands at `/establish` with a `?neon_auth_session_verifier` param that Neon Auth middleware normally exchanges for a real session token — but this project has no `middleware.ts`, so the callback now sends that verifier through `/get-session`, returns its session cookies to the browser, then makes a clean follow-up `/establish` request before syncing the local account and minting the admin cookie. `lib/server/admin-session.ts`, `app/api/neon/session/verify-code/route.ts`, `app/api/neon/session/google/route.ts`, `app/api/neon/session/sign-in/route.ts`, `app/api/neon/session/establish/route.ts`, `app/admin/login/page.jsx`.
+
 ## 2026-10-20
 
 - **Admin login Google spinner** — Google sign-in set `redirecting` and cleared mode, so the Send Code button flashed “Sending code…”. Keep `submittingMode === 'google'` through redirect; primary loader only for send/verify code. `app/admin/login/page.jsx`.
