@@ -20,6 +20,7 @@ import {
   resolveDriveImportFileIds,
 } from './galleryDriveImportBatch';
 import {
+  clearCachedAlbumPhotos,
   readCachedAlbumPhotos,
   warmAlbumMediaCache,
   writeCachedAlbumPhotos,
@@ -544,6 +545,8 @@ export function useGalleryAdminController() {
       }
 
       if (summary.uploadedCount > 0) {
+        // Drop stale IndexedDB snapshot so the grid cannot paint pre-upload media.
+        await clearCachedAlbumPhotos(selectedAlbumId);
         await Promise.all([loadPhotos(selectedAlbumId, sortMode), loadAlbums()]);
       } else {
         await loadAlbums();
@@ -833,6 +836,9 @@ export function useGalleryAdminController() {
           : `Imported ${importedTotal} photo(s) from Google Drive`,
       );
 
+      if (importedTotal > 0) {
+        await clearCachedAlbumPhotos(selectedAlbumId);
+      }
       await loadPhotos(selectedAlbumId, sortMode);
       await loadAlbums();
     } catch (error) {

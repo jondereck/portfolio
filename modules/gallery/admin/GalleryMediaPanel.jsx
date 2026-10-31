@@ -114,6 +114,7 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     uploadSummary,
     importingDrive,
     importProgress,
+    importSummary,
     cancelDriveImport,
     cancelUpload,
     savingAlbum,
@@ -525,6 +526,26 @@ export default function GalleryMediaPanel({ controller, embedded = false }) {
     // Reset paging when changing the album/search/filter context.
     setMediaPage(1);
   }, [activeChip, searchValue, selectedAlbumId]);
+
+  // New uploads land at the front of custom order — jump back to page 1 / Media tab
+  // so success toasts aren't followed by "where did it go?" on a later page or filter.
+  useEffect(() => {
+    const uploaded = Number(uploadSummary?.uploadedCount) || 0;
+    if (uploaded <= 0) return;
+    setMediaPage(1);
+    setActiveTab('media');
+    setActiveChip('all');
+    setSearchValue('');
+  }, [uploadSummary]);
+
+  useEffect(() => {
+    const imported = Number(importSummary?.uploadedCount) || 0;
+    if (imported <= 0) return;
+    setMediaPage(1);
+    setActiveTab('media');
+    setActiveChip('all');
+    setSearchValue('');
+  }, [importSummary]);
 
   const mediaTotal = filteredPhotos.length;
   const mediaTotalPages = Math.max(1, Math.ceil(mediaTotal / mediaPageSize));

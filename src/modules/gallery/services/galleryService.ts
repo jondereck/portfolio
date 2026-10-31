@@ -717,30 +717,54 @@ export class GalleryService {
       }) => void;
     },
   ) {
-    const drivePhotos = await this.driveAdapter.listFolderMedia({
+    const listing = await this.driveAdapter.listFolderMedia({
       accessToken: args.accessToken,
       folderId: args.folderId,
       selectedFileIds: Array.isArray(args.selectedFileIds) ? args.selectedFileIds : [],
       mediaTypeFilter: args.mediaTypeFilter || 'all',
     });
+    // Adapter returns { media, skipped }; keep a defensive fallback for older shapes.
+    const drivePhotos = Array.isArray(listing)
+      ? listing
+      : Array.isArray(listing?.media)
+        ? listing.media
+        : [];
+    const listingSkipped = Array.isArray(listing)
+      ? []
+      : Array.isArray(listing?.skipped)
+        ? listing.skipped
+        : [];
 
     const profileId = await this.repo.getAlbumProfileId(albumId);
 
     const created = [];
-    const skipped = [];
-    let checkedCount = 0;
+    const skipped: Array<{
+      sourceId: string;
+      caption?: string;
+      reason: string;
+      duplicateId?: number;
+    }> = listingSkipped.map((item) => ({
+      sourceId: item.sourceId,
+      caption: item.caption,
+      reason: item.reason,
+    }));
+    let checkedCount = listingSkipped.length;
     let importedCount = 0;
-    let duplicateCount = 0;
+    let duplicateCount = listingSkipped.length;
 
     const emitProgress = (photoCaption?: string) => {
       args.onProgress?.({
-        totalCount: drivePhotos.length,
+        totalCount: drivePhotos.length + listingSkipped.length,
         checkedCount,
         importedCount,
         duplicateCount,
         currentFileName: photoCaption || null,
       });
     };
+
+    if (listingSkipped.length > 0) {
+      emitProgress(listingSkipped[listingSkipped.length - 1]?.caption);
+    }
 
     const describeImportDuplicate = (existing: DuplicatePhotoRecord | null, fallback: string) => {
       const albumName = existing?.album?.name;

@@ -10,6 +10,18 @@ export type ImportedDrivePhoto = {
   contentHash?: string;
 };
 
+/** A Drive item that was listed for import but could not be read. */
+export type SkippedDriveMedia = {
+  sourceId: string;
+  caption?: string;
+  reason: string;
+};
+
+export type DriveMediaListing = {
+  media: ImportedDrivePhoto[];
+  skipped: SkippedDriveMedia[];
+};
+
 export type GoogleDriveFolderEntry = {
   id: string;
   name: string;
@@ -88,6 +100,19 @@ type GoogleFilesListResponse = {
 const ALLOWED_MEDIA_MIME_PREFIXES = ['image/', 'video/'];
 const PREVIEW_MIME_PREFIXES = ['image/', 'video/'];
 const GOOGLE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+
+function describeUnreadableDriveFile(status: number): string {
+  if (status === 404) {
+    return 'This Google Drive file was not found.';
+  }
+  if (status === 403) {
+    return 'The connected Google account does not have permission to read this file.';
+  }
+  if (status === 401) {
+    return 'Google Drive access expired. Reconnect and try again.';
+  }
+  return `Unable to read this Google Drive file (HTTP ${status}).`;
+}
 
 async function createGoogleDriveRequestError(response: Response) {
   const text = await response.text();
@@ -452,7 +477,7 @@ export class GoogleDriveAdapter {
     folderId: string;
     selectedFileIds?: string[];
     mediaTypeFilter?: 'all' | 'images' | 'videos';
-  }): Promise<ImportedDrivePhoto[]> {
+  }): Promise<DriveMediaListing> {
     const selectedIds = Array.isArray(args.selectedFileIds)
       ? Array.from(new Set(args.selectedFileIds.filter(Boolean)))
       : [];
@@ -466,6 +491,7 @@ export class GoogleDriveAdapter {
 
     if (selectedIds.length > 0) {
       const media: ImportedDrivePhoto[] = [];
+      const skipped: SkippedDriveMedia[] = [];
       for (const fileId of selectedIds) {
         const params = new URLSearchParams({
           fields: 'id,name,mimeType,trashed,imageMediaMetadata(time),createdTime,sha256Checksum',
@@ -483,21 +509,37 @@ export class GoogleDriveAdapter {
         );
 
         if (!response.ok) {
+          skipped.push({
+            sourceId: fileId,
+            reason: describeUnreadableDriveFile(response.status),
+          });
           continue;
         }
 
         const file = (await response.json()) as GoogleFileResponse;
         if (!file?.id || file.trashed || typeof file.mimeType !== 'string') {
+          skipped.push({
+            sourceId: fileId,
+            caption: file?.name,
+            reason: file?.trashed
+              ? 'This file is in the Google Drive trash.'
+              : 'This Google Drive file is no longer available.',
+          });
           continue;
         }
         if (!allowedMimePrefixes.some((prefix) => file.mimeType.startsWith(prefix))) {
+          skipped.push({
+            sourceId: fileId,
+            caption: file.name,
+            reason: `Unsupported file type for this import (${file.mimeType}).`,
+          });
           continue;
         }
 
         media.push(toImportedDrivePhoto(file));
       }
 
-      return media;
+      return { media, skipped };
     }
 
     const queue: string[] = [args.folderId];
@@ -557,7 +599,7 @@ export class GoogleDriveAdapter {
       } while (pageToken);
     }
 
-    return media;
+    return { media, skipped: [] };
   }
 
   async getFileContentHash(args: { accessToken: string; fileId: string }): Promise<string> {
