@@ -8,6 +8,7 @@ Only log work that actually landed (commit or verified local change). Do not inv
 
 ## 2026-11-02
 
+- **Admin media preview modal load** — Opening a photo in `GalleryMediaViewer` no longer uses grid lazy/thumbnail URLs (`loading="lazy"`, Drive `w400` first). `MediaPreview` `detail` mode loads full admin/proxy URL eagerly with skeleton + spinner overlay. `MediaPreview.jsx`, `GalleryMediaViewer.jsx`.
 - **Admin media grid thumb loading UX** — `MediaPreview` grid tiles now pulse while Neon/Drive URLs load and show a broken-image fallback after failed load (instead of a blank gray square that looked like “hindi nagloload”). Drive thumb → proxy fallback unchanged. `app/admin/gallery/components/MediaPreview.jsx`.
 
 ## 2026-10-31

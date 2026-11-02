@@ -939,6 +939,7 @@ export default function GalleryMediaViewer({
                                     sourceType={photo.sourceType}
                                     sourceId={photo.sourceId}
                                     alt={title}
+                                    detail={!canSnapshot}
                                     mediaRef={canSnapshot ? videoRef : undefined}
                                     className={`mx-auto block h-full w-full object-contain ${
                                       isPreviewFullscreen
@@ -1032,11 +1033,11 @@ export default function GalleryMediaViewer({
                                 <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-[linear-gradient(to_top,rgba(17,24,39,0.16),transparent)] dark:bg-[linear-gradient(to_top,rgba(2,6,23,0.55),transparent)]" />
                                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),rgba(255,255,255,0.02)_35%,rgba(15,23,42,0.08))] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01)_35%,rgba(2,6,23,0.35))]" />
 
-                                {canSnapshot && previewLoading && !snapshot?.url ? (
+                                {previewLoading && !snapshot?.url ? (
                                   <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-slate-950/35 backdrop-blur-[2px]">
                                     <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/80 px-3 py-2 text-xs font-semibold text-white shadow-xl">
                                       <Loader2 className="size-3.5 animate-spin" />
-                                      Loading video
+                                      {canSnapshot ? 'Loading video' : 'Loading preview'}
                                     </div>
                                   </div>
                                 ) : null}

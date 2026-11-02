@@ -37,7 +37,7 @@ function GridMediaFallback({ alt, className }) {
   );
 }
 
-function GridImagePreview({
+function ImagePreviewWithFallback({
   alt,
   className,
   imageSrc,
@@ -46,6 +46,7 @@ function GridImagePreview({
   onLoadedData,
   onError,
   imageProps,
+  eager = false,
 }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -72,7 +73,8 @@ function GridImagePreview({
         alt={alt}
         className={`${className || ''} ${loaded ? '' : 'opacity-0'}`}
         decoding="async"
-        loading="lazy"
+        loading={eager ? 'eager' : 'lazy'}
+        fetchPriority={eager ? 'high' : 'auto'}
         onLoad={() => {
           setLoaded(true);
           onLoadedData?.();
@@ -203,6 +205,7 @@ export default function MediaPreview({
   className = 'h-full w-full object-cover',
   controls = false,
   mediaRef,
+  detail = false,
   onLoadStart,
   onLoadedData,
   onCanPlay,
@@ -213,7 +216,7 @@ export default function MediaPreview({
   sourceType,
   sourceId,
 }) {
-  const isGridThumbnail = !controls && !mediaRef;
+  const isGridThumbnail = !controls && !mediaRef && !detail;
   const resolvedUrl = getAdminMediaUrl(url, sourceType, sourceId);
   const gridPreviewUrl = isGridThumbnail ? getAdminGridPreviewUrl(url, sourceType, sourceId) : resolvedUrl;
   const mediaRecord =
@@ -275,15 +278,15 @@ export default function MediaPreview({
     );
   }
 
-  const [imageSrc, setImageSrc] = useState(gridPreviewUrl || resolvedUrl);
+  const [imageSrc, setImageSrc] = useState(detail ? resolvedUrl : gridPreviewUrl || resolvedUrl);
 
   useEffect(() => {
-    setImageSrc(gridPreviewUrl || resolvedUrl);
-  }, [gridPreviewUrl, resolvedUrl]);
+    setImageSrc(detail ? resolvedUrl : gridPreviewUrl || resolvedUrl);
+  }, [detail, gridPreviewUrl, resolvedUrl]);
 
-  if (isGridThumbnail) {
+  if (isGridThumbnail || detail) {
     return (
-      <GridImagePreview
+      <ImagePreviewWithFallback
         alt={alt}
         className={className}
         imageSrc={imageSrc}
@@ -292,6 +295,7 @@ export default function MediaPreview({
         onLoadedData={onLoadedData}
         onError={onError}
         imageProps={imageProps}
+        eager={detail}
       />
     );
   }
